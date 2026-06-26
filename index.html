@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NYC Theater — Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; background: #0e0e0e; }
+body { display: flex; }
+
+#sidebar { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; border-right: 1px solid #1a1a1a; overflow: hidden; }
+#sidebar-header { padding: 14px 16px; border-bottom: 1px solid #1a1a1a; }
+#sidebar-header h1 { font-size: 12px; font-weight: 700; color: #eee; letter-spacing: -0.01em; margin-bottom: 2px; font-family: -apple-system, sans-serif; }
+#sidebar-header p { font-size: 10px; color: #444; font-family: -apple-system, sans-serif; }
+
+#venue-list { overflow-y: auto; flex: 1; }
+.venue-item { padding: 9px 16px; border-bottom: 1px solid #141414; cursor: pointer; display: flex; align-items: flex-start; gap: 8px; transition: background 0.1s; font-family: -apple-system, sans-serif; }
+.venue-item:hover { background: #141414; }
+.venue-item.selected { background: #111827; }
+.vdot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+.vname { font-size: 11px; font-weight: 600; color: #ddd; margin-bottom: 1px; }
+.vhood { font-size: 10px; color: #444; }
+
+#map { flex: 1; }
+
+.leaflet-popup-content-wrapper { background: #111; border: 1px solid #2a2a2a; border-radius: 8px; box-shadow: 0 4px 24px rgba(0,0,0,0.7); }
+.leaflet-popup-content { color: #eee; font-family: -apple-system, sans-serif; font-size: 12px; margin: 12px 14px; min-width: 180px; }
+.leaflet-popup-content h3 { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+.leaflet-popup-content .hood { font-size: 10px; color: #555; margin-bottom: 6px; }
+.leaflet-popup-content p { font-size: 11px; color: #999; line-height: 1.55; margin-bottom: 7px; }
+.leaflet-popup-content a { color: #7c6fe0; font-size: 11px; text-decoration: none; }
+.leaflet-popup-content a:hover { text-decoration: underline; }
+.leaflet-popup-tip-container { display: none; }
+.leaflet-popup-close-button { color: #444 !important; }
+.cat-pill { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 6px; border-radius: 3px; margin-bottom: 7px; }
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h1>NYC Theater &amp; Film</h1>
+    <p>Jul 1 → Sep 1, 2026 · 22 venues</p>
+  </div>
+  <div id="venue-list"></div>
+</div>
+<div id="map"></div>
+<script>
+const map = L.map('map', { center: [40.730, -73.984], zoom: 13 });
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© OpenStreetMap, © CARTO', maxZoom: 19
+}).addTo(map);
+
+const venues = [
+  // Experimental Theater
+  { name: "Performance Space New York", hood: "East Village", cat: "theater", lat: 40.7264, lng: -73.9816, address: "150 First Ave", url: "performancespacenewyork.org", notes: "Center of avant-garde performance in NYC. Summer 2026: Holland Andrews + yuniya edi kwon residency." },
+  { name: "La MaMa Experimental Theatre Club", hood: "East Village", cat: "theater", lat: 40.7261, lng: -73.9892, address: "66–74 E 4th St", url: "lamama.org", notes: "Founded by Ellen Stewart 1961. Original incubator of American avant-garde." },
+  { name: "The Performing Garage (Wooster Group)", hood: "SoHo", cat: "theater", lat: 40.7234, lng: -74.0030, address: "33 Wooster St", url: "thewoostergroup.org", notes: "Wooster Group home since 1975. Spalding Gray, Elizabeth LeCompte. Open rehearsals occasionally." },
+  { name: "The Brick Theater", hood: "Williamsburg", cat: "theater", lat: 40.7138, lng: -73.9513, address: "579 Metropolitan Ave", url: "bricktheater.com", notes: "Brooklyn's main incubator for innovative theater. Close to work base." },
+  { name: "Dixon Place", hood: "Lower East Side", cat: "perf", lat: 40.7208, lng: -73.9942, address: "161A Chrystie St", url: "dixonplace.org", notes: "HOT! Festival Jul 6–25. Long-running home of queer experimental work." },
+  { name: "Mabou Mines", hood: "East Village", cat: "theater", lat: 40.7268, lng: -73.9810, address: "150 First Ave (at PS122)", url: "maboumines.org", notes: "Lee Breuer's company — third pillar of Theater of Images alongside Wilson and Foreman." },
+  { name: "New York Live Arts", hood: "Chelsea", cat: "perf", lat: 40.7430, lng: -74.0001, address: "219 W 19th St", url: "newyorklivearts.org", notes: "Bill T. Jones/Arnie Zane space. Strong interdisciplinary and dance-based performance." },
+  { name: "The Kitchen", hood: "Chelsea", cat: "perf", lat: 40.7465, lng: -74.0070, address: "512 W 19th St", url: "thekitchen.org", notes: "Since 1971 — home of Laurie Anderson, Philip Glass, Meredith Monk. Essential downtown experimental." },
+  { name: "National Sawdust", hood: "Williamsburg", cat: "music", lat: 40.7193, lng: -73.9577, address: "80 N 6th St", url: "nationalsawdust.org", notes: "Experimental music/performance hybrids. Brooklyn — easy from work." },
+  { name: "Park Avenue Armory", hood: "Upper East Side", cat: "theater", lat: 40.7637, lng: -73.9642, address: "643 Park Ave", url: "armoryonpark.org", notes: "Massive drill hall for large-scale immersive and experimental work. Robert Wilson has shown here." },
+  { name: "BAM (Brooklyn Academy of Music)", hood: "Fort Greene", cat: "theater", lat: 40.6858, lng: -73.9774, address: "30 Lafayette Ave", url: "bam.org", notes: "NYC's premier presenter of international avant-garde. Pina Bausch, Wilson, van Hove, Lepage, Complicité." },
+  { name: "St. Ann's Warehouse", hood: "DUMBO", cat: "theater", lat: 40.7033, lng: -73.9897, address: "45 Water St", url: "stannswarehouse.org", notes: "Brooklyn's key importer of international experimental theater. Space under the Manhattan Bridge." },
+  // Film
+  { name: "Anthology Film Archives", hood: "East Village", cat: "film", lat: 40.7253, lng: -73.9882, address: "32 Second Ave", url: "anthologyfilmarchives.org", notes: "THE avant-garde cinema venue in NYC. Essential Cinema program year-round. Jonas Mekas co-founder." },
+  { name: "BAM Rose Cinemas", hood: "Fort Greene", cat: "film", lat: 40.6862, lng: -73.9779, address: "30 Lafayette Ave", url: "bam.org/film", notes: "Brooklyn arthouse + experimental film. Accessible from Brooklyn base." },
+  { name: "Microscope Gallery", hood: "Bushwick", cat: "film", lat: 40.7033, lng: -73.9288, address: "1329 Willoughby Ave", url: "microscopegallery.com", notes: "Moving image, sound, digital, performance art. Weekly screenings." },
+  // Opera / Major Institutions
+  { name: "Metropolitan Opera House", hood: "Upper West Side", cat: "opera", lat: 40.7724, lng: -73.9836, address: "30 Lincoln Center Plaza", url: "metopera.org", notes: "Largest opera company in the world. Lepage's Ring Cycle (2010) — kinetic stage machinery at scale. Es Devlin model." },
+  { name: "David H. Koch Theater (NY City Ballet)", hood: "Upper West Side", cat: "opera", lat: 40.7720, lng: -73.9831, address: "20 Lincoln Center Plaza", url: "nycballet.com", notes: "Balanchine tradition + contemporary choreographers (Justin Peck). Major institution dance." },
+  { name: "Lincoln Center — Alice Tully Hall", hood: "Upper West Side", cat: "opera", lat: 40.7727, lng: -73.9845, address: "1941 Broadway", url: "lincolncenter.org", notes: "White Light Festival (fall) — major for experimental and spiritual performance. NY Film Festival." },
+  { name: "Carnegie Hall", hood: "Midtown", cat: "opera", lat: 40.7651, lng: -73.9800, address: "881 7th Ave", url: "carnegiehall.org", notes: "Zankel Hall programs contemporary/experimental work. Important for musical context." },
+  { name: "New York City Center", hood: "Midtown", cat: "perf", lat: 40.7601, lng: -73.9796, address: "131 W 55th St", url: "nycitycenter.org", notes: "Fall for Dance series. Major dance companies at mid-scale. Alvin Ailey." },
+  // Archive
+  { name: "NYPL Performing Arts Library", hood: "Midtown", cat: "archive", lat: 40.7726, lng: -73.9834, address: "40 Lincoln Center Plaza", url: "nypl.org/locations/lpa", notes: "Foreman production materials, Wilson documentation, PAJ back issues, rare performance recordings. Free." },
+  { name: "Watermill Center", hood: "Long Island", cat: "theater", lat: 40.9093, lng: -72.3540, address: "39 Water Mill Towd Rd", url: "watermillcenter.org", notes: "Robert Wilson's lab. Jul 5–Aug 2. First summer post-Wilson. Day trip." },
+];
+
+const colors = {
+  theater: "#7c3aed",
+  film:    "#059669",
+  perf:    "#e11d48",
+  music:   "#d97706",
+  archive: "#6b7280",
+  opera:   "#c2410c",
+};
+
+const catName = {
+  theater: "Experimental Theater",
+  film:    "Film",
+  perf:    "Performance Art",
+  music:   "Music / Performance",
+  archive: "Archive / Library",
+  opera:   "Opera / Classical",
+};
+
+const pillBg = {
+  theater: "#2d1b69", film: "#052e16", perf: "#3b0016", music: "#2d1900", archive: "#1a1a1a", opera: "#3b1005"
+};
+const pillFg = {
+  theater: "#c4b5fd", film: "#86efac", perf: "#fda4af", music: "#fdba74", archive: "#a1a1aa", opera: "#fb923c"
+};
+
+const markerRefs = [];
+
+// Build sidebar list
+const list = document.getElementById('venue-list');
+venues.forEach((v, i) => {
+  const el = document.createElement('div');
+  el.className = 'venue-item';
+  el.id = `vi-${i}`;
+  el.innerHTML = `<div class="vdot" style="background:${colors[v.cat]}"></div><div><div class="vname">${v.name}</div><div class="vhood">${v.hood}</div></div>`;
+  el.onclick = () => {
+    document.querySelectorAll('.venue-item').forEach(e => e.classList.remove('selected'));
+    el.classList.add('selected');
+    map.setView([v.lat, v.lng], 15, { animate: true });
+    markerRefs[i].openPopup();
+  };
+  list.appendChild(el);
+});
+
+venues.forEach((v, i) => {
+  const color = colors[v.cat];
+  const icon = L.divIcon({
+    className: '',
+    html: `<div style="width:11px;height:11px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,0.2);box-shadow:0 0 7px ${color}99;"></div>`,
+    iconSize: [11, 11], iconAnchor: [5, 5]
+  });
+
+  const popup = `
+    <h3>${v.name}</h3>
+    <div class="hood">${v.hood} · ${v.address}</div>
+    <span class="cat-pill" style="background:${pillBg[v.cat]};color:${pillFg[v.cat]}">${catName[v.cat]}</span>
+    <p>${v.notes}</p>
+    <a href="https://${v.url}" target="_blank">↗ ${v.url}</a>
+  `;
+
+  const m = L.marker([v.lat, v.lng], { icon }).addTo(map).bindPopup(popup, { maxWidth: 260 });
+  m.on('click', () => {
+    document.querySelectorAll('.venue-item').forEach(e => e.classList.remove('selected'));
+    const el = document.getElementById(`vi-${i}`);
+    if (el) { el.classList.add('selected'); el.scrollIntoView({ block: 'nearest' }); }
+  });
+  markerRefs.push(m);
+});
+</script>
+</body>
+</html>
