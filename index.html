@@ -3,410 +3,326 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NYC Theater — Map</title>
+<title>NYC Theater — Summer 2026</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { width: 100%; height: 100%; background: #0e0e0e; }
-body { display: flex; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+html, body { width: 100%; height: 100%; background: #0a0a0a; color: #ddd; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 
-/* SIDEBAR */
-#sidebar { width: 260px; flex-shrink: 0; display: flex; flex-direction: column; border-right: 1px solid #1a1a1a; overflow: hidden; }
-#sidebar-header { padding: 14px 16px; border-bottom: 1px solid #1a1a1a; }
-#sidebar-header h1 { font-size: 12px; font-weight: 700; color: #eee; letter-spacing: -0.01em; margin-bottom: 2px; }
-#sidebar-header p { font-size: 10px; color: #444; }
+/* ── TOP NAV ── */
+#topbar {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #1a1a1a;
+  background: #0a0a0a;
+  padding: 0 16px;
+  gap: 2px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1000;
+}
+#topbar h1 { font-size: 11px; font-weight: 700; color: #555; letter-spacing: 0.04em; margin-right: 16px; }
+.tab-btn {
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: none;
+  background: none;
+  color: #444;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tab-btn:hover { color: #aaa; }
+.tab-btn.active { background: #1a1a1a; color: #eee; }
+
+/* ── LAYOUT ── */
+#root { display: flex; flex-direction: column; height: 100vh; }
+.view { display: none; flex: 1; overflow: hidden; }
+.view.active { display: flex; }
+
+/* ══════════════════════════════
+   MAP VIEW
+══════════════════════════════ */
+#view-map { flex-direction: row; }
+
+#sidebar { width: 240px; flex-shrink: 0; display: flex; flex-direction: column; border-right: 1px solid #141414; overflow: hidden; }
+#sidebar-header { padding: 12px 14px; border-bottom: 1px solid #141414; }
+#sidebar-header p { font-size: 9px; color: #333; margin-top: 2px; }
+#sidebar-title { font-size: 11px; font-weight: 700; color: #ddd; }
 #venue-list { overflow-y: auto; flex: 1; }
-.venue-item { padding: 9px 16px; border-bottom: 1px solid #141414; cursor: pointer; display: flex; align-items: flex-start; gap: 8px; transition: background 0.1s; }
-.venue-item:hover { background: #141414; }
-.venue-item.selected { background: #111827; }
-.vdot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
-.vname { font-size: 11px; font-weight: 600; color: #ddd; margin-bottom: 1px; }
-.vhood { font-size: 10px; color: #444; }
+.venue-item { padding: 8px 14px; border-bottom: 1px solid #111; cursor: pointer; display: flex; align-items: flex-start; gap: 8px; transition: background 0.1s; }
+.venue-item:hover { background: #111; }
+.venue-item.selected { background: #0f1520; }
+.vdot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+.vname { font-size: 11px; font-weight: 600; color: #ccc; margin-bottom: 1px; }
+.vhood { font-size: 10px; color: #3a3a3a; }
 
-/* MAP */
 #map { flex: 1; }
 
-/* INFO CARD */
-#card { width: 320px; flex-shrink: 0; display: none; flex-direction: column; border-left: 1px solid #1a1a1a; background: #0a0a0a; overflow-y: auto; }
+/* info card */
+#card { width: 300px; flex-shrink: 0; display: none; flex-direction: column; border-left: 1px solid #141414; background: #0a0a0a; overflow-y: auto; }
 #card.open { display: flex; }
-
-/* IMAGE AREA */
-#card-img-wrap {
-  width: 100%;
-  height: 180px;
-  position: relative;
-  overflow: hidden;
-  flex-shrink: 0;
-  background: #111;
-}
-#card-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-  display: block;
-  transition: opacity 0.3s;
-}
+#card-img-wrap { width: 100%; height: 170px; position: relative; overflow: hidden; flex-shrink: 0; background: #111; }
+#card-img { width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity 0.3s; }
 #card-img.loading { opacity: 0; }
-#card-img-placeholder {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 48px;
-  font-weight: 900;
-  letter-spacing: -0.04em;
-  opacity: 0.35;
-  color: #fff;
-  text-shadow: 0 2px 12px rgba(0,0,0,0.5);
-}
-#card-img-caption {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 6px 10px;
-  font-size: 9px;
-  color: rgba(255,255,255,0.28);
-  background: linear-gradient(transparent, rgba(0,0,0,0.6));
-  text-align: right;
-}
-#card-close {
-  position: absolute;
-  top: 8px;
-  right: 10px;
-  z-index: 10;
-  background: rgba(0,0,0,0.55);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 50%;
-  color: #aaa;
-  cursor: pointer;
-  font-size: 13px;
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-#card-close:hover { color: #eee; background: rgba(0,0,0,0.8); }
-
-/* CARD BODY */
-#card-inner { padding: 18px 20px 24px; flex: 1; position: relative; }
-#card-cat { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 3px 8px; border-radius: 3px; margin-bottom: 12px; }
-#card-name { font-size: 17px; font-weight: 700; color: #eee; line-height: 1.25; margin-bottom: 5px; }
-#card-hood { font-size: 11px; color: #555; margin-bottom: 14px; }
-#card-notes { font-size: 12px; color: #999; line-height: 1.7; margin-bottom: 20px; }
-#card-link { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: #7c6fe0; text-decoration: none; padding: 8px 14px; border: 1px solid #2d1b69; border-radius: 5px; transition: all 0.15s; }
+#card-img-placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 44px; font-weight: 900; opacity: 0.35; color: #fff; }
+#card-img-caption { position: absolute; bottom: 0; left: 0; right: 0; padding: 5px 8px; font-size: 9px; color: rgba(255,255,255,0.25); background: linear-gradient(transparent, rgba(0,0,0,0.5)); text-align: right; }
+#card-close { position: absolute; top: 8px; right: 8px; z-index: 10; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 50%; color: #aaa; cursor: pointer; font-size: 12px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
+#card-close:hover { color: #fff; }
+#card-inner { padding: 16px 18px 20px; flex: 1; }
+#card-cat { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 3px 7px; border-radius: 3px; margin-bottom: 10px; }
+#card-name { font-size: 16px; font-weight: 700; color: #eee; line-height: 1.25; margin-bottom: 4px; }
+#card-hood { font-size: 11px; color: #444; margin-bottom: 12px; }
+#card-notes { font-size: 12px; color: #888; line-height: 1.7; margin-bottom: 16px; }
+#card-link { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: #7c6fe0; text-decoration: none; padding: 7px 12px; border: 1px solid #2d1b69; border-radius: 4px; }
 #card-link:hover { background: #2d1b69; color: #c4b5fd; }
-#card-divider { height: 1px; background: #141414; }
-#card-legend { padding: 16px 20px 20px; }
-#card-legend h4 { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: #2a2a2a; margin-bottom: 10px; }
-.legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.legend-label { font-size: 10px; color: #444; }
+#card-legend { padding: 0 18px 18px; border-top: 1px solid #111; padding-top: 14px; }
+#card-legend h4 { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: #2a2a2a; margin-bottom: 8px; }
+.legend-item { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+.legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.legend-label { font-size: 10px; color: #3a3a3a; }
 
-/* MAP POPUPS */
-.leaflet-popup-content-wrapper { background: #111; border: 1px solid #2a2a2a; border-radius: 8px; box-shadow: 0 4px 24px rgba(0,0,0,0.7); }
-.leaflet-popup-content { color: #eee; font-family: -apple-system, sans-serif; font-size: 12px; margin: 12px 14px; min-width: 160px; }
+/* ══════════════════════════════
+   CALENDAR VIEW
+══════════════════════════════ */
+#view-calendar { flex-direction: row; overflow: hidden; }
+
+#cal-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  border-right: 1px solid #141414;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#cal-month-nav {
+  padding: 14px 14px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #141414;
+}
+#cal-month-nav h2 { font-size: 12px; font-weight: 700; color: #ddd; }
+.month-btn { background: none; border: none; color: #444; cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: 3px; }
+.month-btn:hover { color: #eee; background: #1a1a1a; }
+#cal-mini { padding: 10px 12px; border-bottom: 1px solid #141414; }
+.mini-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.mini-dow { font-size: 8px; color: #333; text-align: center; padding: 2px 0; font-weight: 600; }
+.mini-day {
+  font-size: 9px;
+  color: #444;
+  text-align: center;
+  padding: 3px 2px;
+  border-radius: 3px;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.1s;
+}
+.mini-day:hover { background: #1a1a1a; color: #aaa; }
+.mini-day.today { background: #1a1a2a; color: #7c6fe0; font-weight: 700; }
+.mini-day.selected { background: #2d1b69; color: #c4b5fd; }
+.mini-day.has-event::after { content: ''; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); width: 3px; height: 3px; border-radius: 50%; background: #7c3aed; }
+.mini-day.empty { cursor: default; }
+
+#cal-filter { padding: 10px 12px; overflow-y: auto; flex: 1; }
+#cal-filter h4 { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: #2a2a2a; margin-bottom: 8px; }
+.filter-item { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; cursor: pointer; }
+.filter-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; transition: opacity 0.15s; }
+.filter-label { font-size: 10px; color: #555; }
+.filter-item.off .filter-dot { opacity: 0.2; }
+.filter-item.off .filter-label { color: #2a2a2a; }
+
+#cal-main { flex: 1; overflow-y: auto; padding: 0; display: flex; flex-direction: column; }
+#cal-date-header { padding: 14px 20px 10px; border-bottom: 1px solid #141414; flex-shrink: 0; }
+#cal-date-header h3 { font-size: 12px; font-weight: 700; color: #aaa; }
+#cal-event-list { flex: 1; overflow-y: auto; }
+
+.cal-day-group { border-bottom: 1px solid #111; }
+.cal-day-label {
+  padding: 10px 20px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #333;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  position: sticky;
+  top: 0;
+  background: #0a0a0a;
+  z-index: 1;
+}
+.cal-day-label.is-today { color: #7c3aed; }
+.cal-event-row {
+  padding: 8px 20px 8px 20px;
+  display: flex;
+  gap: 10px;
+  cursor: pointer;
+  border-top: 1px solid #0f0f0f;
+  transition: background 0.1s;
+}
+.cal-event-row:hover { background: #111; }
+.cal-event-bar { width: 3px; border-radius: 2px; flex-shrink: 0; align-self: stretch; min-height: 20px; }
+.cal-event-info { flex: 1; }
+.cal-event-title { font-size: 12px; font-weight: 600; color: #ccc; margin-bottom: 2px; }
+.cal-event-venue { font-size: 10px; color: #3a3a3a; margin-bottom: 2px; }
+.cal-event-dates { font-size: 9px; color: #2a2a2a; }
+.cal-event-tag { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 1px 5px; border-radius: 2px; margin-left: auto; align-self: flex-start; flex-shrink: 0; }
+.cal-empty { padding: 40px 20px; color: #2a2a2a; font-size: 12px; text-align: center; }
+
+#cal-detail {
+  width: 280px;
+  flex-shrink: 0;
+  border-left: 1px solid #141414;
+  display: none;
+  flex-direction: column;
+  overflow-y: auto;
+}
+#cal-detail.open { display: flex; }
+#cal-detail-img { width: 100%; height: 150px; position: relative; overflow: hidden; flex-shrink: 0; background: #111; }
+#cal-detail-img img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.3s; }
+#cal-detail-img img.loading { opacity: 0; }
+#cal-detail-img-ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 900; opacity: 0.35; color: #fff; }
+#cal-detail-img-cap { position: absolute; bottom: 0; right: 0; padding: 4px 8px; font-size: 9px; color: rgba(255,255,255,0.2); }
+#cal-detail-close { position: absolute; top: 8px; right: 8px; z-index: 10; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 50%; color: #aaa; cursor: pointer; font-size: 12px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
+#cal-detail-close:hover { color: #fff; }
+#cal-detail-body { padding: 16px 18px 20px; }
+#cal-detail-tag { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 3px 7px; border-radius: 3px; margin-bottom: 10px; }
+#cal-detail-title { font-size: 16px; font-weight: 700; color: #eee; line-height: 1.25; margin-bottom: 4px; }
+#cal-detail-artist { font-size: 11px; color: #555; margin-bottom: 10px; }
+#cal-detail-dates { font-size: 11px; color: #444; margin-bottom: 12px; }
+#cal-detail-notes { font-size: 12px; color: #777; line-height: 1.7; margin-bottom: 16px; }
+#cal-detail-link { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: #7c6fe0; text-decoration: none; padding: 7px 12px; border: 1px solid #2d1b69; border-radius: 4px; }
+#cal-detail-link:hover { background: #2d1b69; color: #c4b5fd; }
+
+/* Leaflet overrides */
+.leaflet-popup-content-wrapper { background: #111; border: 1px solid #222; border-radius: 8px; box-shadow: 0 4px 24px rgba(0,0,0,0.7); }
+.leaflet-popup-content { color: #eee; font-family: -apple-system, sans-serif; font-size: 12px; margin: 12px 14px; min-width: 150px; }
 .leaflet-popup-content h3 { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
 .leaflet-popup-content .hood { font-size: 10px; color: #555; margin-bottom: 5px; }
 .leaflet-popup-tip-container { display: none; }
 .leaflet-popup-close-button { color: #444 !important; }
 .cat-pill { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 6px; border-radius: 3px; }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 2px; }
 </style>
 </head>
 <body>
+<div id="root">
 
-<div id="sidebar">
-  <div id="sidebar-header">
-    <h1>NYC Theater &amp; Film</h1>
-    <p>Summer 2026 · Research</p>
-  </div>
-  <div id="venue-list"></div>
+<!-- TOP NAV -->
+<div id="topbar">
+  <h1>NYC THEATER · SUMMER 2026</h1>
+  <button class="tab-btn active" id="tab-map" onclick="showView('map')">Map</button>
+  <button class="tab-btn" id="tab-calendar" onclick="showView('calendar')">Calendar</button>
 </div>
 
-<div id="map"></div>
-
-<div id="card">
-  <!-- image at top -->
-  <div id="card-img-wrap">
-    <button id="card-close" onclick="closeCard()">✕</button>
-    <div id="card-img-placeholder"></div>
-    <img id="card-img" class="loading" src="" alt="" />
-    <div id="card-img-caption"></div>
+<!-- ══ MAP VIEW ══ -->
+<div class="view active" id="view-map">
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <div id="sidebar-title">Venues</div>
+      <p>Summer 2026 · Research</p>
+    </div>
+    <div id="venue-list"></div>
   </div>
-
-  <!-- info body -->
-  <div id="card-inner">
-    <div id="card-cat"></div>
-    <div id="card-name"></div>
-    <div id="card-hood"></div>
-    <div id="card-notes"></div>
-    <a id="card-link" href="#" target="_blank">↗ Visit Website</a>
-  </div>
-
-  <div id="card-divider"></div>
-  <div id="card-legend">
-    <h4>Legend</h4>
-    <div class="legend-item"><div class="legend-dot" style="background:#7c3aed"></div><div class="legend-label">Experimental Theater</div></div>
-    <div class="legend-item"><div class="legend-dot" style="background:#e11d48"></div><div class="legend-label">Performance Art</div></div>
-    <div class="legend-item"><div class="legend-dot" style="background:#059669"></div><div class="legend-label">Film</div></div>
-    <div class="legend-item"><div class="legend-dot" style="background:#c2410c"></div><div class="legend-label">Opera / Classical</div></div>
-    <div class="legend-item"><div class="legend-dot" style="background:#0891b2"></div><div class="legend-label">Broadway / Major Stage</div></div>
-    <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div><div class="legend-label">Visual Art / Installation</div></div>
-    <div class="legend-item"><div class="legend-dot" style="background:#d97706"></div><div class="legend-label">Music / Performance</div></div>
-    <div class="legend-item"><div class="legend-dot" style="background:#6b7280"></div><div class="legend-label">Archive / Library</div></div>
+  <div id="map"></div>
+  <div id="card">
+    <div id="card-img-wrap">
+      <button id="card-close" onclick="closeCard()">✕</button>
+      <div id="card-img-placeholder"></div>
+      <img id="card-img" class="loading" src="" alt="" />
+      <div id="card-img-caption"></div>
+    </div>
+    <div id="card-inner">
+      <div id="card-cat"></div>
+      <div id="card-name"></div>
+      <div id="card-hood"></div>
+      <div id="card-notes"></div>
+      <a id="card-link" href="#" target="_blank">↗ Visit Website</a>
+    </div>
+    <div id="card-legend">
+      <h4>Legend</h4>
+      <div class="legend-item"><div class="legend-dot" style="background:#7c3aed"></div><div class="legend-label">Experimental Theater</div></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e11d48"></div><div class="legend-label">Performance Art</div></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#059669"></div><div class="legend-label">Film</div></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#c2410c"></div><div class="legend-label">Opera / Classical</div></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#0891b2"></div><div class="legend-label">Broadway / Major Stage</div></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div><div class="legend-label">Visual Art / Installation</div></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#d97706"></div><div class="legend-label">Music / Performance</div></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#6b7280"></div><div class="legend-label">Archive / Library</div></div>
+    </div>
   </div>
 </div>
+
+<!-- ══ CALENDAR VIEW ══ -->
+<div class="view" id="view-calendar">
+
+  <!-- Left: mini calendar + filters -->
+  <div id="cal-sidebar">
+    <div id="cal-month-nav">
+      <button class="month-btn" onclick="changeMonth(-1)">‹</button>
+      <h2 id="cal-month-label"></h2>
+      <button class="month-btn" onclick="changeMonth(1)">›</button>
+    </div>
+    <div id="cal-mini">
+      <div class="mini-grid" id="cal-mini-grid"></div>
+    </div>
+    <div id="cal-filter">
+      <h4>Filter by type</h4>
+      <div id="filter-list"></div>
+    </div>
+  </div>
+
+  <!-- Center: event list -->
+  <div id="cal-main">
+    <div id="cal-date-header">
+      <h3 id="cal-list-label"></h3>
+    </div>
+    <div id="cal-event-list"></div>
+  </div>
+
+  <!-- Right: event detail -->
+  <div id="cal-detail">
+    <div id="cal-detail-img">
+      <button id="cal-detail-close" onclick="closeDetail()">✕</button>
+      <div id="cal-detail-img-ph"></div>
+      <img id="cal-detail-img-el" class="loading" src="" alt="" />
+      <div id="cal-detail-img-cap"></div>
+    </div>
+    <div id="cal-detail-body">
+      <div id="cal-detail-tag"></div>
+      <div id="cal-detail-title"></div>
+      <div id="cal-detail-artist"></div>
+      <div id="cal-detail-dates"></div>
+      <div id="cal-detail-notes"></div>
+      <a id="cal-detail-link" href="#" target="_blank">↗ Visit Website</a>
+    </div>
+  </div>
+</div>
+
+</div><!-- #root -->
 
 <script>
-const map = L.map('map', { center: [40.730, -73.984], zoom: 13 });
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  attribution: '© OpenStreetMap, © CARTO', maxZoom: 19
-}).addTo(map);
-
-// wiki: Wikipedia article title for image lookup
-// imgUrl: direct fallback image URL (optional)
-const venues = [
-  // Experimental Theater
-  {
-    name: "Performance Space New York", hood: "East Village", cat: "theater",
-    lat: 40.7264, lng: -73.9816, address: "150 First Ave", url: "performancespacenewyork.org",
-    wiki: "Performance Space New York",
-    notes: "Center of gravity for avant-garde performance in NYC. Summer 2026 residencies: Holland Andrews + yuniya edi kwon. Works-in-progress, radical interdisciplinary work."
-  },
-  {
-    name: "La MaMa Experimental Theatre Club", hood: "East Village", cat: "theater",
-    lat: 40.7261, lng: -73.9892, address: "66–74 E 4th St", url: "lamama.org",
-    wiki: "La MaMa Experimental Theatre Club",
-    notes: "Founded by Ellen Stewart 1961. Original incubator of American avant-garde. Multiple stages and a global network. Fall season announcements drop in August."
-  },
-  {
-    name: "The Performing Garage (Wooster Group)", hood: "SoHo", cat: "theater",
-    lat: 40.7234, lng: -74.0030, address: "33 Wooster St", url: "thewoostergroup.org",
-    wiki: "Wooster Group",
-    notes: "Wooster Group home since 1975. Elizabeth LeCompte, Spalding Gray. The room where Rumstick Road was performed. Open rehearsals and labs occasionally."
-  },
-  {
-    name: "The Brick Theater", hood: "Williamsburg", cat: "theater",
-    lat: 40.7138, lng: -73.9513, address: "579 Metropolitan Ave", url: "bricktheater.com",
-    wiki: "The Brick (theater)",
-    notes: "Brooklyn's main incubator for innovative and experimental theater. Close to work base — check their calendar regularly."
-  },
-  {
-    name: "Mabou Mines", hood: "East Village", cat: "theater",
-    lat: 40.7268, lng: -73.9810, address: "150 First Ave", url: "maboumines.org",
-    wiki: "Mabou Mines",
-    notes: "Lee Breuer's company — third pillar of Theater of Images alongside Wilson and Foreman. Puppetry, animation, and live performance fused."
-  },
-  {
-    name: "Park Avenue Armory", hood: "Upper East Side", cat: "theater",
-    lat: 40.7637, lng: -73.9642, address: "643 Park Ave", url: "armoryonpark.org",
-    wiki: "Park Avenue Armory",
-    notes: "Massive 55,000 sq ft drill hall for large-scale immersive and experimental work. Robert Wilson, Kara Walker, Marina Abramovic have all shown here. The space demands architectural thinking."
-  },
-  {
-    name: "BAM (Brooklyn Academy of Music)", hood: "Fort Greene", cat: "theater",
-    lat: 40.6858, lng: -73.9774, address: "30 Lafayette Ave", url: "bam.org",
-    wiki: "Brooklyn Academy of Music",
-    notes: "NYC's premier presenter of international avant-garde. Pina Bausch, Wilson, van Hove, Lepage, Complicité — all showed at BAM. BAMnext Wave festival (fall) is essential."
-  },
-  {
-    name: "St. Ann's Warehouse", hood: "DUMBO", cat: "theater",
-    lat: 40.7033, lng: -73.9897, address: "45 Water St", url: "stannswarehouse.org",
-    wiki: "St. Ann's Warehouse",
-    notes: "Brooklyn's key importer of international experimental theater. Complicité, Kneehigh, major UK and European work. Industrial space under the Manhattan Bridge — the space itself is part of the work."
-  },
-  {
-    name: "HERE Arts Center", hood: "SoHo", cat: "theater",
-    lat: 40.7249, lng: -74.0043, address: "145 Sixth Ave", url: "here.org",
-    wiki: "HERE Arts Center",
-    notes: "Interdisciplinary performance space. Home of PROTOTYPE Festival (opera-theater). Annie Dorsen, Taylor Mac, and other artists working at the intersection of theater, music, and technology."
-  },
-  {
-    name: "The Public Theater", hood: "NoHo", cat: "theater",
-    lat: 40.7295, lng: -73.9903, address: "425 Lafayette St", url: "publictheater.org",
-    wiki: "The Public Theater",
-    notes: "Joe Papp's theater — the essential bridge between experimental and mainstream American theater. Shakespeare in the Park, new American plays, and adventurous programming. Where Hamilton started."
-  },
-
-  // Broadway / Major Stage
-  {
-    name: "The Shed", hood: "Hudson Yards", cat: "broadway",
-    lat: 40.7540, lng: -74.0019, address: "545 W 30th St", url: "theshed.org",
-    wiki: "The Shed (arts center)",
-    notes: "NYC's newest major cultural venue — purpose-built for artists working at the intersection of performing arts, visual art, and technology. A retractable outer shell transforms the space. The most technically advanced venue in the city for projection and large-scale installation work."
-  },
-  {
-    name: "Lincoln Center Theater", hood: "Upper West Side", cat: "broadway",
-    lat: 40.7725, lng: -73.9832, address: "150 W 65th St", url: "lct.org",
-    wiki: "Lincoln Center Theater",
-    notes: "Vivian Beaumont (large) + Mitzi Newhouse (small) + Claire Tow (rooftop). Major productions including Complicité collaborations, new American and international work. Bridge between experimental and commercial."
-  },
-  {
-    name: "Signature Theatre", hood: "Hell's Kitchen", cat: "broadway",
-    lat: 40.7617, lng: -73.9937, address: "480 W 42nd St", url: "signaturetheatre.org",
-    wiki: "Signature Theatre (New York City)",
-    notes: "Playwright-centered theater — each season dedicates to a single playwright's body of work (Edward Albee, Sam Shepard, Suzan-Lori Parks, etc.). Three stages. Rigorous and writer-first."
-  },
-  {
-    name: "Playwrights Horizons", hood: "Hell's Kitchen", cat: "broadway",
-    lat: 40.7614, lng: -73.9940, address: "416 W 42nd St", url: "playwrightshorizons.org",
-    wiki: "Playwrights Horizons",
-    notes: "Since 1971 — the leading new play development theater. James Lapine, Stephen Sondheim, Wendy Wasserstein, and virtually every major American playwright developed work here. Essential for new writing."
-  },
-  {
-    name: "Second Stage Theater", hood: "Hell's Kitchen", cat: "broadway",
-    lat: 40.7596, lng: -73.9921, address: "305 W 43rd St", url: "2st.com",
-    wiki: "Second Stage Theatre",
-    notes: "Exclusively produces American plays and musicals. Broadway house + smaller off-Broadway space. Serious commissioning and development program."
-  },
-  {
-    name: "The Majestic Theatre", hood: "Theater District", cat: "broadway",
-    lat: 40.7573, lng: -73.9868, address: "245 W 44th St", url: "broadwayworld.com/venues/Majestic-Theatre",
-    wiki: "Majestic Theatre (New York City)",
-    notes: "Home of Phantom of the Opera for 35 years. Study the technical rigging, the chandelier drop, the automation systems — a masterclass in theatrical engineering at commercial scale. Harold Prince's production design thinking."
-  },
-
-  // Performance Art
-  {
-    name: "Dixon Place", hood: "Lower East Side", cat: "perf",
-    lat: 40.7208, lng: -73.9942, address: "161A Chrystie St", url: "dixonplace.org",
-    wiki: "Dixon Place",
-    notes: "HOT! Festival Jul 6–25. Long-running home of queer experimental work. Risk-taking at small scale — good for scanning emerging artists."
-  },
-  {
-    name: "New York Live Arts", hood: "Chelsea", cat: "perf",
-    lat: 40.7430, lng: -74.0001, address: "219 W 19th St", url: "newyorklivearts.org",
-    wiki: "New York Live Arts",
-    notes: "Bill T. Jones/Arnie Zane space. Strong interdisciplinary and dance-based performance. Fellowship and residency program for dance artists."
-  },
-  {
-    name: "The Kitchen", hood: "Chelsea", cat: "perf",
-    lat: 40.7465, lng: -74.0070, address: "512 W 19th St", url: "thekitchen.org",
-    wiki: "The Kitchen (performance space)",
-    notes: "Since 1971 — early home of Laurie Anderson, Philip Glass, Meredith Monk, Trisha Brown. Essential node in the downtown experimental scene. Always programming something interesting."
-  },
-  {
-    name: "New York City Center", hood: "Midtown", cat: "perf",
-    lat: 40.7601, lng: -73.9796, address: "131 W 55th St", url: "nycitycenter.org",
-    wiki: "New York City Center",
-    notes: "Fall for Dance (September) — 5 programs over 10 nights, $30 tickets, major dance companies. Encores! series for rarely produced musicals. Great survey of contemporary dance landscape."
-  },
-
-  // Visual Art / Installation
-  {
-    name: "MoMA PS1", hood: "Long Island City", cat: "visual",
-    lat: 40.7452, lng: -73.9376, address: "22-25 Jackson Ave, Queens", url: "momaps1.org",
-    wiki: "MoMA PS1",
-    notes: "MoMA's contemporary branch in Queens — more experimental, installation-heavy, performance-adjacent. Warm Up summer music series. Key space for artists working between visual art and performance."
-  },
-  {
-    name: "Pioneer Works", hood: "Red Hook", cat: "visual",
-    lat: 40.6759, lng: -74.0131, address: "159 Pioneer St", url: "pioneerworks.org",
-    wiki: "Pioneer Works",
-    notes: "Red Hook arts center in a former ironworks. Massive open space used for large-scale installation, performance, and technology-art crossovers. Residencies for artists and scientists. Summer Sundays events are free and excellent."
-  },
-  {
-    name: "Dia Chelsea", hood: "Chelsea", cat: "visual",
-    lat: 40.7484, lng: -74.0059, address: "537 W 22nd St", url: "diaart.org",
-    wiki: "Dia Art Foundation",
-    notes: "Dia Foundation's Chelsea space. Minimalist and conceptual art — Dan Flavin, Donald Judd, Richard Serra. Essential for understanding the visual and spatial language that runs parallel to Theater of Images."
-  },
-
-  // Film
-  {
-    name: "Anthology Film Archives", hood: "East Village", cat: "film",
-    lat: 40.7253, lng: -73.9882, address: "32 Second Ave", url: "anthologyfilmarchives.org",
-    wiki: "Anthology Film Archives",
-    notes: "THE avant-garde cinema venue in NYC. Co-founded by Jonas Mekas. Essential Cinema program runs year-round — rotating canonical experimental film: Brakhage, Deren, Snow, Mekas, Warhol. Check calendar weekly."
-  },
-  {
-    name: "BAM Rose Cinemas", hood: "Fort Greene", cat: "film",
-    lat: 40.6862, lng: -73.9779, address: "30 Lafayette Ave", url: "bam.org/film",
-    wiki: "Brooklyn Academy of Music",
-    notes: "Brooklyn arthouse + experimental film. Filmmaker Q&As, retrospectives. BAMcinemaFest in June is the best festival for independent and international film in NYC."
-  },
-  {
-    name: "Microscope Gallery", hood: "Bushwick", cat: "film",
-    lat: 40.7033, lng: -73.9288, address: "1329 Willoughby Ave", url: "microscopegallery.com",
-    wiki: null,
-    notes: "Specialized in moving image, sound, digital, and performance art. Weekly screenings. Essential for experimental film/video alongside theater research."
-  },
-
-  // Opera / Classical
-  {
-    name: "Metropolitan Opera House", hood: "Upper West Side", cat: "opera",
-    lat: 40.7724, lng: -73.9836, address: "30 Lincoln Center Plaza", url: "metopera.org",
-    wiki: "Metropolitan Opera House (Lincoln Center)",
-    notes: "Largest opera company in the world. Robert Lepage's Ring Cycle (2010) used massive kinetic stage machinery — a key reference for tech-in-theater at scale. Es Devlin designed sets here. Study the technical infrastructure."
-  },
-  {
-    name: "David H. Koch Theater", hood: "Upper West Side", cat: "opera",
-    lat: 40.7720, lng: -73.9831, address: "20 Lincoln Center Plaza", url: "nycballet.com",
-    wiki: "David H. Koch Theater",
-    notes: "NY City Ballet. Balanchine's neoclassical tradition + contemporary choreographers (Justin Peck, Crystal Pite guest works). Important for understanding how classical vocabulary gets reimagined."
-  },
-  {
-    name: "Lincoln Center — Alice Tully Hall", hood: "Upper West Side", cat: "opera",
-    lat: 40.7727, lng: -73.9845, address: "1941 Broadway", url: "lincolncenter.org",
-    wiki: "Alice Tully Hall",
-    notes: "White Light Festival (fall) — major international series focused on spiritual and transcendent performance. NY Film Festival (October). Check summer programming for outdoor events."
-  },
-  {
-    name: "Carnegie Hall", hood: "Midtown", cat: "opera",
-    lat: 40.7651, lng: -73.9800, address: "881 7th Ave", url: "carnegiehall.org",
-    wiki: "Carnegie Hall",
-    notes: "Zankel Hall (below) programs contemporary and experimental music alongside the main stage. Important for understanding the continuum from classical to experimental in the concert hall context."
-  },
-
-  // Music
-  {
-    name: "National Sawdust", hood: "Williamsburg", cat: "music",
-    lat: 40.7193, lng: -73.9577, address: "80 N 6th St", url: "nationalsawdust.org",
-    wiki: "National Sawdust",
-    notes: "Experimental music and performance hybrid space in Brooklyn. Intimate, acoustically superb. Artists at the intersection of classical, electronic, and performance. Close to work base."
-  },
-
-  // Archive
-  {
-    name: "NYPL Performing Arts Library", hood: "Midtown", cat: "archive",
-    lat: 40.7726, lng: -73.9834, address: "40 Lincoln Center Plaza", url: "nypl.org/locations/lpa",
-    wiki: "New York Public Library for the Performing Arts",
-    notes: "Foreman production materials, Wilson documentation, PAJ back issues, rare performance recordings and video. Free with library card. Essential for deep research."
-  },
-  {
-    name: "Watermill Center", hood: "Long Island", cat: "theater",
-    lat: 40.9093, lng: -72.3540, address: "39 Water Mill Towd Rd", url: "watermillcenter.org",
-    wiki: "The Watermill Center",
-    notes: "Robert Wilson's laboratory. Jul 5–Aug 2 summer program — 60–100 international artists in intensive collaboration. First summer post-Wilson, historically significant. Day trip from NYC."
-  },
-];
+// ══════════════════════════════════════════════════
+//  SHARED DATA
+// ══════════════════════════════════════════════════
 
 const colors = {
-  theater:  "#7c3aed",
-  broadway: "#0891b2",
-  perf:     "#e11d48",
-  visual:   "#a855f7",
-  film:     "#059669",
-  opera:    "#c2410c",
-  music:    "#d97706",
-  archive:  "#6b7280",
+  theater: "#7c3aed", broadway: "#0891b2", perf: "#e11d48",
+  visual: "#a855f7", film: "#059669", opera: "#c2410c",
+  music: "#d97706", archive: "#6b7280",
 };
-
 const catName = {
-  theater:  "Experimental Theater",
-  broadway: "Broadway / Major Stage",
-  perf:     "Performance Art",
-  visual:   "Visual Art / Installation",
-  film:     "Film",
-  opera:    "Opera / Classical",
-  music:    "Music / Performance",
-  archive:  "Archive / Library",
+  theater: "Experimental Theater", broadway: "Broadway / Major Stage",
+  perf: "Performance Art", visual: "Visual Art / Installation",
+  film: "Film", opera: "Opera / Classical",
+  music: "Music / Performance", archive: "Archive / Library",
 };
-
 const pillBg = {
   theater: "#2d1b69", broadway: "#0c2a33", perf: "#3b0016",
   visual: "#3b1d6e", film: "#052e16", opera: "#3b1005",
@@ -417,29 +333,227 @@ const pillFg = {
   visual: "#d8b4fe", film: "#86efac", opera: "#fb923c",
   music: "#fdba74", archive: "#a1a1aa"
 };
-
-// gradient placeholders per category
 const gradients = {
-  theater:  "linear-gradient(135deg, #3b1f7a 0%, #6d28d9 50%, #4c1d95 100%)",
+  theater: "linear-gradient(135deg, #3b1f7a 0%, #6d28d9 50%, #4c1d95 100%)",
   broadway: "linear-gradient(135deg, #0e4a5c 0%, #0891b2 50%, #0c3a47 100%)",
-  perf:     "linear-gradient(135deg, #6b0022 0%, #e11d48 50%, #9f1239 100%)",
-  visual:   "linear-gradient(135deg, #4a1a7a 0%, #a855f7 50%, #7e22ce 100%)",
-  film:     "linear-gradient(135deg, #064e28 0%, #059669 50%, #047857 100%)",
-  opera:    "linear-gradient(135deg, #7c2600 0%, #c2410c 50%, #9a3412 100%)",
-  music:    "linear-gradient(135deg, #78350f 0%, #d97706 50%, #b45309 100%)",
-  archive:  "linear-gradient(135deg, #1f2937 0%, #374151 50%, #111827 100%)",
+  perf: "linear-gradient(135deg, #6b0022 0%, #e11d48 50%, #9f1239 100%)",
+  visual: "linear-gradient(135deg, #4a1a7a 0%, #a855f7 50%, #7e22ce 100%)",
+  film: "linear-gradient(135deg, #064e28 0%, #059669 50%, #047857 100%)",
+  opera: "linear-gradient(135deg, #7c2600 0%, #c2410c 50%, #9a3412 100%)",
+  music: "linear-gradient(135deg, #78350f 0%, #d97706 50%, #b45309 100%)",
+  archive: "linear-gradient(135deg, #1f2937 0%, #374151 50%, #111827 100%)",
 };
 
-const markerRefs = [];
+// ── VENUES ──
+const venues = [
+  { name: "Performance Space New York", hood: "East Village", cat: "theater", lat: 40.7264, lng: -73.9816, address: "150 First Ave", url: "performancespacenewyork.org", wiki: "Performance Space New York", notes: "Center of gravity for avant-garde performance in NYC. Summer 2026 residencies: Holland Andrews + yuniya edi kwon. Works-in-progress, radical interdisciplinary work." },
+  { name: "La MaMa Experimental Theatre Club", hood: "East Village", cat: "theater", lat: 40.7261, lng: -73.9892, address: "66–74 E 4th St", url: "lamama.org", wiki: "La MaMa Experimental Theatre Club", notes: "Founded by Ellen Stewart 1961. Original incubator of American avant-garde. Multiple stages and a global network. Fall season announcements drop in August." },
+  { name: "The Performing Garage (Wooster Group)", hood: "SoHo", cat: "theater", lat: 40.7234, lng: -74.0030, address: "33 Wooster St", url: "thewoostergroup.org", wiki: "Wooster Group", notes: "Wooster Group home since 1975. Elizabeth LeCompte, Spalding Gray. The room where Rumstick Road was performed. Open rehearsals and labs occasionally." },
+  { name: "The Brick Theater", hood: "Williamsburg", cat: "theater", lat: 40.7138, lng: -73.9513, address: "579 Metropolitan Ave", url: "bricktheater.com", wiki: "The Brick (theater)", notes: "Brooklyn's main incubator for innovative and experimental theater. Close to work base — check their calendar regularly." },
+  { name: "Mabou Mines", hood: "East Village", cat: "theater", lat: 40.7268, lng: -73.9810, address: "150 First Ave", url: "maboumines.org", wiki: "Mabou Mines", notes: "Lee Breuer's company — third pillar of Theater of Images alongside Wilson and Foreman. Puppetry, animation, and live performance fused." },
+  { name: "Park Avenue Armory", hood: "Upper East Side", cat: "theater", lat: 40.7637, lng: -73.9642, address: "643 Park Ave", url: "armoryonpark.org", wiki: "Park Avenue Armory", notes: "Massive 55,000 sq ft drill hall for large-scale immersive and experimental work. Robert Wilson, Kara Walker, Marina Abramovic have all shown here. The space demands architectural thinking." },
+  { name: "BAM (Brooklyn Academy of Music)", hood: "Fort Greene", cat: "theater", lat: 40.6858, lng: -73.9774, address: "30 Lafayette Ave", url: "bam.org", wiki: "Brooklyn Academy of Music", notes: "NYC's premier presenter of international avant-garde. Pina Bausch, Wilson, van Hove, Lepage, Complicité — all showed at BAM. BAMnext Wave festival (fall) is essential." },
+  { name: "St. Ann's Warehouse", hood: "DUMBO", cat: "theater", lat: 40.7033, lng: -73.9897, address: "45 Water St", url: "stannswarehouse.org", wiki: "St. Ann's Warehouse", notes: "Brooklyn's key importer of international experimental theater. Complicité, Kneehigh, major UK and European work. Industrial space under the Manhattan Bridge — the space itself is part of the work." },
+  { name: "HERE Arts Center", hood: "SoHo", cat: "theater", lat: 40.7249, lng: -74.0043, address: "145 Sixth Ave", url: "here.org", wiki: "HERE Arts Center", notes: "Interdisciplinary performance space. Home of PROTOTYPE Festival (opera-theater). Annie Dorsen, Taylor Mac, and other artists working at the intersection of theater, music, and technology." },
+  { name: "The Public Theater", hood: "NoHo", cat: "theater", lat: 40.7295, lng: -73.9903, address: "425 Lafayette St", url: "publictheater.org", wiki: "The Public Theater", notes: "Joe Papp's theater — the essential bridge between experimental and mainstream American theater. Shakespeare in the Park, new American plays, and adventurous programming. Where Hamilton started." },
+  { name: "The Shed", hood: "Hudson Yards", cat: "broadway", lat: 40.7540, lng: -74.0019, address: "545 W 30th St", url: "theshed.org", wiki: "The Shed (arts center)", notes: "NYC's newest major cultural venue — purpose-built for artists working at the intersection of performing arts, visual art, and technology. A retractable outer shell transforms the space. The most technically advanced venue in the city for projection and large-scale installation work." },
+  { name: "Lincoln Center Theater", hood: "Upper West Side", cat: "broadway", lat: 40.7725, lng: -73.9832, address: "150 W 65th St", url: "lct.org", wiki: "Lincoln Center Theater", notes: "Vivian Beaumont (large) + Mitzi Newhouse (small) + Claire Tow (rooftop). Major productions including Complicité collaborations, new American and international work. Bridge between experimental and commercial." },
+  { name: "Signature Theatre", hood: "Hell's Kitchen", cat: "broadway", lat: 40.7617, lng: -73.9937, address: "480 W 42nd St", url: "signaturetheatre.org", wiki: "Signature Theatre (New York City)", notes: "Playwright-centered theater — each season dedicates to a single playwright's body of work (Edward Albee, Sam Shepard, Suzan-Lori Parks, etc.). Three stages. Rigorous and writer-first." },
+  { name: "Playwrights Horizons", hood: "Hell's Kitchen", cat: "broadway", lat: 40.7614, lng: -73.9940, address: "416 W 42nd St", url: "playwrightshorizons.org", wiki: "Playwrights Horizons", notes: "Since 1971 — the leading new play development theater. James Lapine, Stephen Sondheim, Wendy Wasserstein, and virtually every major American playwright developed work here. Essential for new writing." },
+  { name: "Second Stage Theater", hood: "Hell's Kitchen", cat: "broadway", lat: 40.7596, lng: -73.9921, address: "305 W 43rd St", url: "2st.com", wiki: "Second Stage Theatre", notes: "Exclusively produces American plays and musicals. Broadway house + smaller off-Broadway space. Serious commissioning and development program." },
+  { name: "The Majestic Theatre", hood: "Theater District", cat: "broadway", lat: 40.7573, lng: -73.9868, address: "245 W 44th St", url: "broadwayworld.com/venues/Majestic-Theatre", wiki: "Majestic Theatre (New York City)", notes: "Home of Phantom of the Opera for 35 years. Study the technical rigging, the chandelier drop, the automation systems — a masterclass in theatrical engineering at commercial scale. Harold Prince's production design thinking." },
+  { name: "Dixon Place", hood: "Lower East Side", cat: "perf", lat: 40.7208, lng: -73.9942, address: "161A Chrystie St", url: "dixonplace.org", wiki: "Dixon Place", notes: "HOT! Festival Jul 7–25. Long-running home of queer experimental work. Risk-taking at small scale — good for scanning emerging artists." },
+  { name: "New York Live Arts", hood: "Chelsea", cat: "perf", lat: 40.7430, lng: -74.0001, address: "219 W 19th St", url: "newyorklivearts.org", wiki: "New York Live Arts", notes: "Bill T. Jones/Arnie Zane space. Strong interdisciplinary and dance-based performance. Fellowship and residency program for dance artists." },
+  { name: "The Kitchen", hood: "Chelsea", cat: "perf", lat: 40.7465, lng: -74.0070, address: "512 W 19th St", url: "thekitchen.org", wiki: "The Kitchen (performance space)", notes: "Since 1971 — early home of Laurie Anderson, Philip Glass, Meredith Monk, Trisha Brown. Essential node in the downtown experimental scene. Always programming something interesting." },
+  { name: "New York City Center", hood: "Midtown", cat: "perf", lat: 40.7601, lng: -73.9796, address: "131 W 55th St", url: "nycitycenter.org", wiki: "New York City Center", notes: "Fall for Dance (September) — 5 programs over 10 nights, $30 tickets, major dance companies. Encores! series for rarely produced musicals. Great survey of contemporary dance landscape." },
+  { name: "MoMA PS1", hood: "Long Island City", cat: "visual", lat: 40.7452, lng: -73.9376, address: "22-25 Jackson Ave, Queens", url: "momaps1.org", wiki: "MoMA PS1", notes: "MoMA's contemporary branch in Queens — more experimental, installation-heavy, performance-adjacent. Warm Up summer music series. Key space for artists working between visual art and performance." },
+  { name: "Pioneer Works", hood: "Red Hook", cat: "visual", lat: 40.6759, lng: -74.0131, address: "159 Pioneer St", url: "pioneerworks.org", wiki: "Pioneer Works", notes: "Red Hook arts center in a former ironworks. Massive open space used for large-scale installation, performance, and technology-art crossovers. Summer Sundays events are free and excellent." },
+  { name: "Dia Chelsea", hood: "Chelsea", cat: "visual", lat: 40.7484, lng: -74.0059, address: "537 W 22nd St", url: "diaart.org", wiki: "Dia Art Foundation", notes: "Dia Foundation's Chelsea space. Minimalist and conceptual art — Dan Flavin, Donald Judd, Richard Serra. Essential for understanding the visual and spatial language that runs parallel to Theater of Images." },
+  { name: "Anthology Film Archives", hood: "East Village", cat: "film", lat: 40.7253, lng: -73.9882, address: "32 Second Ave", url: "anthologyfilmarchives.org", wiki: "Anthology Film Archives", notes: "THE avant-garde cinema venue in NYC. Co-founded by Jonas Mekas. Essential Cinema program runs year-round — Brakhage, Deren, Snow, Mekas, Warhol. Check calendar weekly." },
+  { name: "BAM Rose Cinemas", hood: "Fort Greene", cat: "film", lat: 40.6862, lng: -73.9779, address: "30 Lafayette Ave", url: "bam.org/film", wiki: "Brooklyn Academy of Music", notes: "Brooklyn arthouse + experimental film. Filmmaker Q&As, retrospectives. BAMcinemaFest is the best festival for independent and international film in NYC." },
+  { name: "Microscope Gallery", hood: "Bushwick", cat: "film", lat: 40.7033, lng: -73.9288, address: "1329 Willoughby Ave", url: "microscopegallery.com", wiki: null, notes: "Specialized in moving image, sound, digital, and performance art. Weekly screenings. Essential for experimental film/video alongside theater research." },
+  { name: "Metropolitan Opera House", hood: "Upper West Side", cat: "opera", lat: 40.7724, lng: -73.9836, address: "30 Lincoln Center Plaza", url: "metopera.org", wiki: "Metropolitan Opera House (Lincoln Center)", notes: "Largest opera company in the world. Robert Lepage's Ring Cycle used massive kinetic stage machinery — a key reference for tech-in-theater at scale. Es Devlin designed sets here." },
+  { name: "David H. Koch Theater", hood: "Upper West Side", cat: "opera", lat: 40.7720, lng: -73.9831, address: "20 Lincoln Center Plaza", url: "nycballet.com", wiki: "David H. Koch Theater", notes: "NY City Ballet. Balanchine's neoclassical tradition + contemporary choreographers (Justin Peck, Crystal Pite guest works). Important for understanding how classical vocabulary gets reimagined." },
+  { name: "Lincoln Center — Alice Tully Hall", hood: "Upper West Side", cat: "opera", lat: 40.7727, lng: -73.9845, address: "1941 Broadway", url: "lincolncenter.org", wiki: "Alice Tully Hall", notes: "White Light Festival (fall) — major international series focused on spiritual and transcendent performance. NY Film Festival (October). Check summer programming for outdoor events." },
+  { name: "Carnegie Hall", hood: "Midtown", cat: "opera", lat: 40.7651, lng: -73.9800, address: "881 7th Ave", url: "carnegiehall.org", wiki: "Carnegie Hall", notes: "Zankel Hall (below) programs contemporary and experimental music alongside the main stage. Important for understanding the continuum from classical to experimental in the concert hall context." },
+  { name: "National Sawdust", hood: "Williamsburg", cat: "music", lat: 40.7193, lng: -73.9577, address: "80 N 6th St", url: "nationalsawdust.org", wiki: "National Sawdust", notes: "Experimental music and performance hybrid space in Brooklyn. Intimate, acoustically superb. Artists at the intersection of classical, electronic, and performance. Close to work base." },
+  { name: "NYPL Performing Arts Library", hood: "Midtown", cat: "archive", lat: 40.7726, lng: -73.9834, address: "40 Lincoln Center Plaza", url: "nypl.org/locations/lpa", wiki: "New York Public Library for the Performing Arts", notes: "Foreman production materials, Wilson documentation, PAJ back issues, rare performance recordings and video. Free with library card. Essential for deep research." },
+  { name: "Watermill Center", hood: "Long Island", cat: "theater", lat: 40.9093, lng: -72.3540, address: "39 Water Mill Towd Rd", url: "watermillcenter.org", wiki: "The Watermill Center", notes: "Robert Wilson's laboratory. Jul 5–Aug 2 summer program — 20–60 international artists in intensive collaboration. First summer post-Wilson, historically significant. Day trip from NYC." },
+];
 
-// --- Image sources ---
-const SV_KEY = 'AIzaSyCIpgTbmatAn_hEDmXh7aSblLpPgnZiwsg';
+// ── EVENTS ──
+// start/end: "YYYY-MM-DD" (inclusive)
+const events = [
+  {
+    title: "clinamen",
+    artist: "Céleste Boursier-Mougenot",
+    venue: "Park Avenue Armory",
+    cat: "theater",
+    start: "2026-07-01", end: "2026-08-02",
+    notes: "Ceramic bowls floating in water produce melodious chiming sounds in the vast Wade Thompson Drill Hall. An aquatic and musical installation.",
+    url: "armoryonpark.org",
+    wiki: "Park Avenue Armory",
+  },
+  {
+    title: "Holland Andrews + yuniya edi kwon — Residency",
+    artist: "Holland Andrews, yuniya edi kwon, Symara Sarai",
+    venue: "Performance Space New York",
+    cat: "theater",
+    start: "2026-07-01", end: "2026-07-31",
+    notes: "Studio residency for 'How does it feel to look at nothing' — an opera exploring the forces that compel life's emergence and the meanings we make within periods of decay.",
+    url: "performancespacenewyork.org",
+    wiki: "Performance Space New York",
+  },
+  {
+    title: "EDGING",
+    artist: "Christelle Oyiri",
+    venue: "Performance Space New York",
+    cat: "theater",
+    start: "2026-07-01", end: "2026-07-31",
+    notes: "U.S. debut of Paris-bred artist/producer/DJ Christelle Oyiri. Performance and musical laboratory — experimental electronics, regional club forms, rap, techno. High energy collision at the sonic edge.",
+    url: "performancespacenewyork.org",
+    wiki: "Performance Space New York",
+  },
+  {
+    title: "Greater New York 2026",
+    artist: "50+ multidisciplinary artists",
+    venue: "MoMA PS1",
+    cat: "visual",
+    start: "2026-07-01", end: "2026-08-19",
+    notes: "50+ artists in the formative years of their careers. Encompasses site-specific commissions, new productions, and performances across all levels of MoMA PS1's historic school building.",
+    url: "momaps1.org",
+    wiki: "MoMA PS1",
+  },
+  {
+    title: "Open Call 2026",
+    artist: "Zain Alam, AYDO, Mel Corchado, Marwa Eltahir",
+    venue: "The Shed",
+    cat: "broadway",
+    start: "2026-07-01", end: "2026-08-31",
+    notes: "The Shed's commissioning program for early-career NYC artists. Works include: 'Meter & Light: Night' (Zain Alam), 'Border Ecologies' (AYDO), '$TICKY $IN$' (Mel Corchado), '99 Names: My Liberation Is Tied to Yours' (Marwa Eltahir).",
+    url: "theshed.org",
+    wiki: "The Shed (arts center)",
+  },
+  {
+    title: "Summer Sway",
+    artist: "Various DJs",
+    venue: "The Shed",
+    cat: "broadway",
+    start: "2026-07-01", end: "2026-08-31",
+    notes: "Summer DJ and performance series at The Shed. Experimental and genre-crossing sets.",
+    url: "theshed.org",
+    wiki: "The Shed (arts center)",
+  },
+  {
+    title: "The Swann (work-in-progress)",
+    artist: "Tamar-kali",
+    venue: "National Sawdust",
+    cat: "music",
+    start: "2026-07-01", end: "2026-08-31",
+    notes: "Intimate chamber work inspired by William Dorsey Swann — a formerly enslaved gender-bending resident of DC who was the first known person to call himself 'queen of drag' and the first American to pursue legal action defending LGBTQIA rights to gather.",
+    url: "nationalsawdust.org",
+    wiki: "National Sawdust",
+  },
+  {
+    title: "International Summer Program 2026",
+    artist: "20 international artists",
+    venue: "Watermill Center",
+    cat: "theater",
+    start: "2026-07-05", end: "2026-08-02",
+    notes: "4-week intensive residency bringing international artists together to develop installations and performances. First summer program post-Robert Wilson — historically significant. Day trip from NYC.",
+    url: "watermillcenter.org",
+    wiki: "The Watermill Center",
+  },
+  {
+    title: "HOT! Festival",
+    artist: "30+ artists",
+    venue: "Dixon Place",
+    cat: "perf",
+    start: "2026-07-07", end: "2026-07-25",
+    notes: "Annual NYC celebration of queer experimental performance. 30+ artists over 3 weeks — the most risk-taking festival at the smallest scale. Good for discovering emerging performance artists.",
+    url: "dixonplace.org",
+    wiki: "Dixon Place",
+  },
+  {
+    title: "The Saviors",
+    artist: "",
+    venue: "Atlantic Theater Company",
+    cat: "broadway",
+    start: "2026-07-08", end: "2026-08-31",
+    notes: "First Preview: July 8. Opening Night: July 27. At the Linda Gross Theater.",
+    url: "atlantictheater.org",
+    wiki: null,
+  },
+  {
+    title: "GOODBYE HORSES",
+    artist: "",
+    venue: "The Brick Theater",
+    cat: "theater",
+    start: "2026-07-09", end: "2026-07-25",
+    notes: "An unauthorized retelling of Jonathan Demme's The Silence of the Lambs.",
+    url: "bricktheater.com",
+    wiki: "The Brick (theater)",
+  },
+  {
+    title: "SheNYC Summer Theater Festival",
+    artist: "Multiple playwrights",
+    venue: "Classic Stage Company",
+    cat: "theater",
+    start: "2026-07-14", end: "2026-07-26",
+    notes: "8 original full-length plays and musicals by women-identifying writers at the Lynn F. Angelson Theatre (Classic Stage Company, 136 E 13th St). Experimental works, plays, musicals, comedies, dramas.",
+    url: "shenycarts.org",
+    wiki: null,
+  },
+  {
+    title: "DISRUPTION",
+    artist: "",
+    venue: "Signature Theatre",
+    cat: "broadway",
+    start: "2026-07-22", end: "2026-08-31",
+    notes: "First Preview: July 22. Opening Night: August 2. At the Romulus Linney Courtyard Theatre (Pershing Square Signature Center).",
+    url: "signaturetheatre.org",
+    wiki: "Signature Theatre (New York City)",
+  },
+  {
+    title: "The Winter's Tale",
+    artist: "Shakespeare in the Park",
+    venue: "The Public Theater",
+    cat: "theater",
+    start: "2026-07-25", end: "2026-08-31",
+    notes: "Shakespeare in the Park at the Delacorte Theater in Central Park. First Preview: July 25. Opening Night: August 11. Free tickets via the Public Theater lottery.",
+    url: "publictheater.org",
+    wiki: "The Public Theater",
+  },
+  {
+    title: "Strange Men",
+    artist: "Sarah Bernstein",
+    venue: "The Brick Theater",
+    cat: "theater",
+    start: "2026-07-30", end: "2026-08-02",
+    notes: "A dark comedy about what it means to be a man.",
+    url: "bricktheater.com",
+    wiki: "The Brick (theater)",
+  },
+];
 
-function streetViewUrl(lat, lng) {
-  return `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${lat},${lng}&fov=80&pitch=10&key=${SV_KEY}`;
+// ══════════════════════════════════════════════════
+//  TAB SWITCHING
+// ══════════════════════════════════════════════════
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'map') { setTimeout(() => map.invalidateSize(), 50); }
+  if (name === 'calendar') { renderCalendar(); }
 }
 
+// ══════════════════════════════════════════════════
+//  IMAGE HELPERS
+// ══════════════════════════════════════════════════
+const SV_KEY = 'AIzaSyCIpgTbmatAn_hEDmXh7aSblLpPgnZiwsg';
 const wikiCache = {};
+
 async function fetchWikiImage(title) {
   if (!title) return null;
   if (wikiCache[title] !== undefined) return wikiCache[title];
@@ -448,14 +562,49 @@ async function fetchWikiImage(title) {
     const data = await (await fetch(url)).json();
     const page = Object.values(data.query.pages)[0];
     return (wikiCache[title] = page?.thumbnail?.source || null);
-  } catch {
-    return (wikiCache[title] = null);
-  }
+  } catch { return (wikiCache[title] = null); }
 }
 
-// --- Sidebar ---
-const list = document.getElementById('venue-list');
+function svUrl(lat, lng) {
+  return `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${lat},${lng}&fov=80&pitch=10&key=${SV_KEY}`;
+}
+
+function initials(name) {
+  return name.split(/\s+/).filter(w => /^[A-Z]/.test(w)).slice(0, 2).map(w => w[0]).join('');
+}
+
+async function loadVenueImage(imgEl, phEl, capEl, wrapEl, wiki, lat, lng, cat) {
+  wrapEl.style.background = gradients[cat] || gradients.theater;
+  phEl.textContent = '';
+  imgEl.classList.add('loading');
+  imgEl.src = '';
+  capEl.textContent = '';
+
+  function tryLoad(src, caption) {
+    return new Promise(resolve => {
+      imgEl.onload  = () => { imgEl.classList.remove('loading'); capEl.textContent = caption; phEl.textContent = ''; resolve(true); };
+      imgEl.onerror = () => resolve(false);
+      imgEl.src = src;
+    });
+  }
+  const ws = await fetchWikiImage(wiki);
+  if (ws && await tryLoad(ws, '© Wikipedia / CC')) return;
+  if (lat && lng) await tryLoad(svUrl(lat, lng), '© Google Street View');
+}
+
+// ══════════════════════════════════════════════════
+//  MAP VIEW
+// ══════════════════════════════════════════════════
+const map = L.map('map', { center: [40.730, -73.984], zoom: 13 });
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© OpenStreetMap, © CARTO', maxZoom: 19
+}).addTo(map);
+
+const markerRefs = [];
+const vList = document.getElementById('venue-list');
+
 venues.forEach((v, i) => {
+  // sidebar
   const el = document.createElement('div');
   el.className = 'venue-item';
   el.id = `vi-${i}`;
@@ -467,79 +616,236 @@ venues.forEach((v, i) => {
     markerRefs[i].openPopup();
     openCard(v);
   };
-  list.appendChild(el);
-});
+  vList.appendChild(el);
 
-// --- Map markers ---
-venues.forEach((v, i) => {
+  // marker
   const color = colors[v.cat];
   const icon = L.divIcon({
     className: '',
-    html: `<div style="width:11px;height:11px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,0.2);box-shadow:0 0 7px ${color}99;"></div>`,
+    html: `<div style="width:11px;height:11px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,0.15);box-shadow:0 0 8px ${color}88;"></div>`,
     iconSize: [11, 11], iconAnchor: [5, 5]
   });
-  const popup = `
-    <h3>${v.name}</h3>
-    <div class="hood">${v.hood} · ${v.address}</div>
-    <span class="cat-pill" style="background:${pillBg[v.cat]};color:${pillFg[v.cat]}">${catName[v.cat]}</span>
-  `;
-  const m = L.marker([v.lat, v.lng], { icon }).addTo(map).bindPopup(popup, { maxWidth: 240 });
+  const m = L.marker([v.lat, v.lng], { icon }).addTo(map)
+    .bindPopup(`<h3>${v.name}</h3><div class="hood">${v.hood} · ${v.address}</div><span class="cat-pill" style="background:${pillBg[v.cat]};color:${pillFg[v.cat]}">${catName[v.cat]}</span>`, { maxWidth: 220 });
   m.on('click', () => {
     document.querySelectorAll('.venue-item').forEach(e => e.classList.remove('selected'));
-    const el = document.getElementById(`vi-${i}`);
-    if (el) { el.classList.add('selected'); el.scrollIntoView({ block: 'nearest' }); }
+    const el2 = document.getElementById(`vi-${i}`);
+    if (el2) { el2.classList.add('selected'); el2.scrollIntoView({ block: 'nearest' }); }
     openCard(v);
   });
   markerRefs.push(m);
 });
 
-// --- Info card ---
-function initials(name) {
-  return name.split(/\s+/).filter(w => /^[A-Z]/.test(w)).slice(0, 2).map(w => w[0]).join('');
-}
-
 async function openCard(v) {
   document.getElementById('card-cat').textContent = catName[v.cat];
-  document.getElementById('card-cat').style.background = pillBg[v.cat];
-  document.getElementById('card-cat').style.color = pillFg[v.cat];
+  document.getElementById('card-cat').style.cssText = `background:${pillBg[v.cat]};color:${pillFg[v.cat]}`;
   document.getElementById('card-name').textContent = v.name;
   document.getElementById('card-hood').textContent = v.hood + ' · ' + v.address;
   document.getElementById('card-notes').textContent = v.notes;
   document.getElementById('card-link').href = 'https://' + v.url;
-
-  const wrap = document.getElementById('card-img-wrap');
-  const img  = document.getElementById('card-img');
-  const ph   = document.getElementById('card-img-placeholder');
-  const cap  = document.getElementById('card-img-caption');
-
-  // reset to gradient placeholder
-  wrap.style.background = gradients[v.cat];
-  ph.textContent = initials(v.name);
-  img.classList.add('loading');
-  img.src = '';
-  cap.textContent = '';
-
+  document.getElementById('card-img-placeholder').textContent = initials(v.name);
   document.getElementById('card').classList.add('open');
 
-  function loadImg(src, caption) {
-    return new Promise(resolve => {
-      img.onload  = () => { img.classList.remove('loading'); ph.textContent = ''; cap.textContent = caption; resolve(true); };
-      img.onerror = () => resolve(false);
-      img.src = src;
-    });
+  await loadVenueImage(
+    document.getElementById('card-img'),
+    document.getElementById('card-img-placeholder'),
+    document.getElementById('card-img-caption'),
+    document.getElementById('card-img-wrap'),
+    v.wiki, v.lat, v.lng, v.cat
+  );
+}
+
+function closeCard() { document.getElementById('card').classList.remove('open'); }
+
+// ══════════════════════════════════════════════════
+//  CALENDAR VIEW
+// ══════════════════════════════════════════════════
+let calYear = 2026, calMonth = 6; // 0-indexed: 6=July
+const activeFilters = new Set(Object.keys(colors));
+
+function changeMonth(dir) {
+  calMonth += dir;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  renderMiniCal();
+  renderEventList();
+  buildFilters();
+}
+
+function dateStr(y, m, d) {
+  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+function parseDate(s) {
+  const [y,m,d] = s.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+function fmtDate(s) {
+  return parseDate(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+function fmtMonth(y, m) {
+  return new Date(y, m, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+function eventsActiveOnDate(dateS) {
+  return events.filter(e => {
+    return e.start <= dateS && dateS <= e.end && activeFilters.has(e.cat);
+  });
+}
+
+function renderMiniCal() {
+  document.getElementById('cal-month-label').textContent = fmtMonth(calYear, calMonth);
+  const grid = document.getElementById('cal-mini-grid');
+  grid.innerHTML = '';
+  const dows = ['S','M','T','W','T','F','S'];
+  dows.forEach(d => { const el = document.createElement('div'); el.className = 'mini-dow'; el.textContent = d; grid.appendChild(el); });
+
+  const firstDow = new Date(calYear, calMonth, 1).getDay();
+  const lastDay  = new Date(calYear, calMonth + 1, 0).getDate();
+  const todayS   = new Date().toISOString().slice(0, 10);
+
+  for (let i = 0; i < firstDow; i++) {
+    const el = document.createElement('div'); el.className = 'mini-day empty'; grid.appendChild(el);
   }
-
-  // 1st try: Wikipedia iconic photo
-  const wikiSrc = await fetchWikiImage(v.wiki);
-  if (wikiSrc) { await loadImg(wikiSrc, '© Wikipedia / CC'); return; }
-
-  // 2nd try: Google Street View
-  await loadImg(streetViewUrl(v.lat, v.lng), '© Google Street View');
+  for (let d = 1; d <= lastDay; d++) {
+    const ds = dateStr(calYear, calMonth, d);
+    const el = document.createElement('div');
+    el.className = 'mini-day';
+    el.textContent = d;
+    if (ds === todayS) el.classList.add('today');
+    if (eventsActiveOnDate(ds).length) el.classList.add('has-event');
+    el.onclick = () => scrollToDate(ds);
+    grid.appendChild(el);
+  }
 }
 
-function closeCard() {
-  document.getElementById('card').classList.remove('open');
+function buildFilters() {
+  const fl = document.getElementById('filter-list');
+  if (fl.children.length) return; // already built
+  Object.entries(catName).forEach(([cat, label]) => {
+    const el = document.createElement('div');
+    el.className = 'filter-item';
+    el.dataset.cat = cat;
+    el.innerHTML = `<div class="filter-dot" style="background:${colors[cat]}"></div><div class="filter-label">${label}</div>`;
+    el.onclick = () => {
+      if (activeFilters.has(cat)) { activeFilters.delete(cat); el.classList.add('off'); }
+      else { activeFilters.add(cat); el.classList.remove('off'); }
+      renderEventList();
+      renderMiniCal();
+    };
+    fl.appendChild(el);
+  });
 }
+
+function renderEventList() {
+  const label = document.getElementById('cal-list-label');
+  label.textContent = fmtMonth(calYear, calMonth);
+
+  const container = document.getElementById('cal-event-list');
+  container.innerHTML = '';
+
+  const lastDay = new Date(calYear, calMonth + 1, 0).getDate();
+  const todayS  = new Date().toISOString().slice(0, 10);
+  let hasAny = false;
+
+  // Group events by day: only show event on its START date (if within this month),
+  // or on the 1st of month if it started earlier but is still running.
+  const byDay = {};
+
+  events.forEach(ev => {
+    if (!activeFilters.has(ev.cat)) return;
+    const evStart = parseDate(ev.start);
+    const evEnd   = parseDate(ev.end);
+    const monthStart = new Date(calYear, calMonth, 1);
+    const monthEnd   = new Date(calYear, calMonth, lastDay);
+    if (evStart > monthEnd || evEnd < monthStart) return; // not in this month
+
+    // show on: max(ev.start, month start)
+    const showDate = evStart >= monthStart ? ev.start : dateStr(calYear, calMonth, 1);
+    if (!byDay[showDate]) byDay[showDate] = [];
+    byDay[showDate].push(ev);
+  });
+
+  const sortedDays = Object.keys(byDay).sort();
+  sortedDays.forEach(ds => {
+    hasAny = true;
+    const d = parseDate(ds);
+    const isToday = ds === todayS;
+
+    const dayGroup = document.createElement('div');
+    dayGroup.className = 'cal-day-group';
+    dayGroup.id = 'day-' + ds;
+
+    const dayLabel = document.createElement('div');
+    dayLabel.className = 'cal-day-label' + (isToday ? ' is-today' : '');
+    dayLabel.textContent = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase() + (isToday ? ' · TODAY' : '');
+    dayGroup.appendChild(dayLabel);
+
+    byDay[ds].forEach(ev => {
+      const row = document.createElement('div');
+      row.className = 'cal-event-row';
+      row.innerHTML = `
+        <div class="cal-event-bar" style="background:${colors[ev.cat]}"></div>
+        <div class="cal-event-info">
+          <div class="cal-event-title">${ev.title}</div>
+          ${ev.artist ? `<div class="cal-event-venue">${ev.artist}</div>` : ''}
+          <div class="cal-event-dates">${ev.venue} · ${fmtDate(ev.start)} – ${fmtDate(ev.end)}</div>
+        </div>
+        <div class="cal-event-tag" style="background:${pillBg[ev.cat]};color:${pillFg[ev.cat]}">${catName[ev.cat].split(' ')[0]}</div>
+      `;
+      row.onclick = () => openDetail(ev);
+      dayGroup.appendChild(row);
+    });
+
+    container.appendChild(dayGroup);
+  });
+
+  if (!hasAny) {
+    const empty = document.createElement('div');
+    empty.className = 'cal-empty';
+    empty.textContent = 'No events this month.';
+    container.appendChild(empty);
+  }
+}
+
+function scrollToDate(ds) {
+  const el = document.getElementById('day-' + ds);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // highlight selected day
+  document.querySelectorAll('.mini-day.selected').forEach(e => e.classList.remove('selected'));
+}
+
+async function openDetail(ev) {
+  const venueObj = venues.find(v => v.name === ev.venue);
+
+  document.getElementById('cal-detail-tag').textContent = catName[ev.cat];
+  document.getElementById('cal-detail-tag').style.cssText = `background:${pillBg[ev.cat]};color:${pillFg[ev.cat]}`;
+  document.getElementById('cal-detail-title').textContent = ev.title;
+  document.getElementById('cal-detail-artist').textContent = ev.artist || '';
+  document.getElementById('cal-detail-dates').textContent = `${fmtDate(ev.start)} – ${fmtDate(ev.end)} · ${ev.venue}`;
+  document.getElementById('cal-detail-notes').textContent = ev.notes;
+  document.getElementById('cal-detail-link').href = 'https://' + ev.url;
+  document.getElementById('cal-detail-img-ph').textContent = initials(ev.title);
+  document.getElementById('cal-detail').classList.add('open');
+
+  await loadVenueImage(
+    document.getElementById('cal-detail-img-el'),
+    document.getElementById('cal-detail-img-ph'),
+    document.getElementById('cal-detail-img-cap'),
+    document.getElementById('cal-detail-img'),
+    ev.wiki,
+    venueObj?.lat, venueObj?.lng,
+    ev.cat
+  );
+}
+
+function closeDetail() { document.getElementById('cal-detail').classList.remove('open'); }
+
+// init calendar
+renderCalendar();
 </script>
 </body>
 </html>
