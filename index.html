@@ -55,11 +55,12 @@ body { display: flex; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI'
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
-  font-weight: 800;
+  font-size: 48px;
+  font-weight: 900;
   letter-spacing: -0.04em;
-  opacity: 0.18;
+  opacity: 0.35;
   color: #fff;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.5);
 }
 #card-img-caption {
   position: absolute;
@@ -419,38 +420,23 @@ const pillFg = {
 
 // gradient placeholders per category
 const gradients = {
-  theater:  "linear-gradient(135deg, #1a0a3a 0%, #2d1b69 100%)",
-  broadway: "linear-gradient(135deg, #071820 0%, #0c3a47 100%)",
-  perf:     "linear-gradient(135deg, #200010 0%, #4b001e 100%)",
-  visual:   "linear-gradient(135deg, #1a0a3a 0%, #4c1d95 100%)",
-  film:     "linear-gradient(135deg, #031a0e 0%, #064e28 100%)",
-  opera:    "linear-gradient(135deg, #1f0800 0%, #431a00 100%)",
-  music:    "linear-gradient(135deg, #1a0e00 0%, #3d2000 100%)",
-  archive:  "linear-gradient(135deg, #0e0e0e 0%, #222 100%)",
+  theater:  "linear-gradient(135deg, #3b1f7a 0%, #6d28d9 50%, #4c1d95 100%)",
+  broadway: "linear-gradient(135deg, #0e4a5c 0%, #0891b2 50%, #0c3a47 100%)",
+  perf:     "linear-gradient(135deg, #6b0022 0%, #e11d48 50%, #9f1239 100%)",
+  visual:   "linear-gradient(135deg, #4a1a7a 0%, #a855f7 50%, #7e22ce 100%)",
+  film:     "linear-gradient(135deg, #064e28 0%, #059669 50%, #047857 100%)",
+  opera:    "linear-gradient(135deg, #7c2600 0%, #c2410c 50%, #9a3412 100%)",
+  music:    "linear-gradient(135deg, #78350f 0%, #d97706 50%, #b45309 100%)",
+  archive:  "linear-gradient(135deg, #1f2937 0%, #374151 50%, #111827 100%)",
 };
 
 const markerRefs = [];
 
-// --- Wikipedia image fetch ---
-const imgCache = {};
+// --- Google Street View ---
+const SV_KEY = 'AIzaSyCIpgTbmatAn_hEDmXh7aSblLpPgnZiwsg';
 
-async function fetchWikiImage(wikiTitle) {
-  if (!wikiTitle) return null;
-  if (imgCache[wikiTitle] !== undefined) return imgCache[wikiTitle];
-
-  try {
-    const url = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(wikiTitle)}&prop=pageimages&format=json&pithumbsize=640&origin=*`;
-    const res = await fetch(url);
-    const data = await res.json();
-    const pages = data.query.pages;
-    const page = pages[Object.keys(pages)[0]];
-    const src = page?.thumbnail?.source || null;
-    imgCache[wikiTitle] = src;
-    return src;
-  } catch {
-    imgCache[wikiTitle] = null;
-    return null;
-  }
+function streetViewUrl(lat, lng) {
+  return `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${lat},${lng}&fov=80&pitch=10&key=${SV_KEY}`;
 }
 
 // --- Sidebar ---
@@ -498,48 +484,37 @@ function initials(name) {
   return name.split(/\s+/).filter(w => /^[A-Z]/.test(w)).slice(0, 2).map(w => w[0]).join('');
 }
 
-async function openCard(v) {
-  // fill text immediately
-  const catEl   = document.getElementById('card-cat');
-  const nameEl  = document.getElementById('card-name');
-  const hoodEl  = document.getElementById('card-hood');
-  const notesEl = document.getElementById('card-notes');
-  const linkEl  = document.getElementById('card-link');
-  const wrap    = document.getElementById('card-img-wrap');
-  const img     = document.getElementById('card-img');
-  const ph      = document.getElementById('card-img-placeholder');
-  const cap     = document.getElementById('card-img-caption');
+function openCard(v) {
+  document.getElementById('card-cat').textContent = catName[v.cat];
+  document.getElementById('card-cat').style.background = pillBg[v.cat];
+  document.getElementById('card-cat').style.color = pillFg[v.cat];
+  document.getElementById('card-name').textContent = v.name;
+  document.getElementById('card-hood').textContent = v.hood + ' · ' + v.address;
+  document.getElementById('card-notes').textContent = v.notes;
+  document.getElementById('card-link').href = 'https://' + v.url;
 
-  catEl.textContent = catName[v.cat];
-  catEl.style.background = pillBg[v.cat];
-  catEl.style.color = pillFg[v.cat];
-  nameEl.textContent = v.name;
-  hoodEl.textContent = v.hood + ' · ' + v.address;
-  notesEl.textContent = v.notes;
-  linkEl.href = 'https://' + v.url;
+  const wrap = document.getElementById('card-img-wrap');
+  const img  = document.getElementById('card-img');
+  const ph   = document.getElementById('card-img-placeholder');
+  const cap  = document.getElementById('card-img-caption');
 
-  // reset image area — show gradient + initials placeholder while loading
-  img.classList.add('loading');
-  img.src = '';
+  // show gradient + initials while Street View loads
   wrap.style.background = gradients[v.cat];
   ph.textContent = initials(v.name);
-  cap.textContent = '';
+  img.classList.add('loading');
+
+  img.onload = () => {
+    img.classList.remove('loading');
+    ph.textContent = '';
+    cap.textContent = '© Google Street View';
+  };
+  img.onerror = () => {
+    img.classList.add('loading');
+    cap.textContent = '';
+  };
+  img.src = streetViewUrl(v.lat, v.lng);
 
   document.getElementById('card').classList.add('open');
-
-  // fetch Wikipedia image async
-  const src = await fetchWikiImage(v.wiki);
-  if (src) {
-    img.onload = () => {
-      img.classList.remove('loading');
-      cap.textContent = '© Wikipedia / CC';
-    };
-    img.onerror = () => {
-      img.classList.add('loading'); // keep hidden, show placeholder
-      cap.textContent = '';
-    };
-    img.src = src;
-  }
 }
 
 function closeCard() {
