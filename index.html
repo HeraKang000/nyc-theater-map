@@ -30,21 +30,81 @@ body { display: flex; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI'
 /* INFO CARD */
 #card { width: 320px; flex-shrink: 0; display: none; flex-direction: column; border-left: 1px solid #1a1a1a; background: #0a0a0a; overflow-y: auto; }
 #card.open { display: flex; }
-#card-close { position: absolute; top: 10px; right: 12px; background: none; border: none; color: #444; cursor: pointer; font-size: 16px; }
-#card-close:hover { color: #eee; }
-#card-inner { padding: 24px 20px; flex: 1; position: relative; }
-#card-cat { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 3px 8px; border-radius: 3px; margin-bottom: 14px; }
-#card-name { font-size: 18px; font-weight: 700; color: #eee; line-height: 1.25; margin-bottom: 6px; }
-#card-hood { font-size: 11px; color: #555; margin-bottom: 16px; }
+
+/* IMAGE AREA */
+#card-img-wrap {
+  width: 100%;
+  height: 180px;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #111;
+}
+#card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  transition: opacity 0.3s;
+}
+#card-img.loading { opacity: 0; }
+#card-img-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  opacity: 0.18;
+  color: #fff;
+}
+#card-img-caption {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 6px 10px;
+  font-size: 9px;
+  color: rgba(255,255,255,0.28);
+  background: linear-gradient(transparent, rgba(0,0,0,0.6));
+  text-align: right;
+}
+#card-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 10;
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 50%;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 13px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#card-close:hover { color: #eee; background: rgba(0,0,0,0.8); }
+
+/* CARD BODY */
+#card-inner { padding: 18px 20px 24px; flex: 1; position: relative; }
+#card-cat { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 3px 8px; border-radius: 3px; margin-bottom: 12px; }
+#card-name { font-size: 17px; font-weight: 700; color: #eee; line-height: 1.25; margin-bottom: 5px; }
+#card-hood { font-size: 11px; color: #555; margin-bottom: 14px; }
 #card-notes { font-size: 12px; color: #999; line-height: 1.7; margin-bottom: 20px; }
 #card-link { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: #7c6fe0; text-decoration: none; padding: 8px 14px; border: 1px solid #2d1b69; border-radius: 5px; transition: all 0.15s; }
 #card-link:hover { background: #2d1b69; color: #c4b5fd; }
-#card-divider { height: 1px; background: #1a1a1a; margin: 20px 0; }
-#card-legend { padding: 0 20px 20px; }
-#card-legend h4 { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: #333; margin-bottom: 10px; }
-.legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+#card-divider { height: 1px; background: #141414; }
+#card-legend { padding: 16px 20px 20px; }
+#card-legend h4 { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: #2a2a2a; margin-bottom: 10px; }
+.legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.legend-label { font-size: 10px; color: #555; }
+.legend-label { font-size: 10px; color: #444; }
 
 /* MAP POPUPS */
 .leaflet-popup-content-wrapper { background: #111; border: 1px solid #2a2a2a; border-radius: 8px; box-shadow: 0 4px 24px rgba(0,0,0,0.7); }
@@ -69,14 +129,23 @@ body { display: flex; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI'
 <div id="map"></div>
 
 <div id="card">
-  <div id="card-inner">
+  <!-- image at top -->
+  <div id="card-img-wrap">
     <button id="card-close" onclick="closeCard()">✕</button>
+    <div id="card-img-placeholder"></div>
+    <img id="card-img" class="loading" src="" alt="" />
+    <div id="card-img-caption"></div>
+  </div>
+
+  <!-- info body -->
+  <div id="card-inner">
     <div id="card-cat"></div>
     <div id="card-name"></div>
     <div id="card-hood"></div>
     <div id="card-notes"></div>
     <a id="card-link" href="#" target="_blank">↗ Visit Website</a>
   </div>
+
   <div id="card-divider"></div>
   <div id="card-legend">
     <h4>Legend</h4>
@@ -85,7 +154,7 @@ body { display: flex; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI'
     <div class="legend-item"><div class="legend-dot" style="background:#059669"></div><div class="legend-label">Film</div></div>
     <div class="legend-item"><div class="legend-dot" style="background:#c2410c"></div><div class="legend-label">Opera / Classical</div></div>
     <div class="legend-item"><div class="legend-dot" style="background:#0891b2"></div><div class="legend-label">Broadway / Major Stage</div></div>
-    <div class="legend-item"><div class="legend-dot" style="background:#7c3aed" style="opacity:0.5"></div><div class="legend-label">Visual Art / Installation</div></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div><div class="legend-label">Visual Art / Installation</div></div>
     <div class="legend-item"><div class="legend-dot" style="background:#d97706"></div><div class="legend-label">Music / Performance</div></div>
     <div class="legend-item"><div class="legend-dot" style="background:#6b7280"></div><div class="legend-label">Archive / Library</div></div>
   </div>
@@ -97,55 +166,222 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
   attribution: '© OpenStreetMap, © CARTO', maxZoom: 19
 }).addTo(map);
 
+// wiki: Wikipedia article title for image lookup
+// imgUrl: direct fallback image URL (optional)
 const venues = [
   // Experimental Theater
-  { name: "Performance Space New York", hood: "East Village", cat: "theater", lat: 40.7264, lng: -73.9816, address: "150 First Ave", url: "performancespacenewyork.org", notes: "Center of gravity for avant-garde performance in NYC. Summer 2026 residencies: Holland Andrews + yuniya edi kwon. Works-in-progress, radical interdisciplinary work." },
-  { name: "La MaMa Experimental Theatre Club", hood: "East Village", cat: "theater", lat: 40.7261, lng: -73.9892, address: "66–74 E 4th St", url: "lamama.org", notes: "Founded by Ellen Stewart 1961. Original incubator of American avant-garde. Multiple stages and a global network. Fall season announcements drop in August." },
-  { name: "The Performing Garage (Wooster Group)", hood: "SoHo", cat: "theater", lat: 40.7234, lng: -74.0030, address: "33 Wooster St", url: "thewoostergroup.org", notes: "Wooster Group home since 1975. Elizabeth LeCompte, Spalding Gray. The room where Rumstick Road was performed. Open rehearsals and labs occasionally." },
-  { name: "The Brick Theater", hood: "Williamsburg", cat: "theater", lat: 40.7138, lng: -73.9513, address: "579 Metropolitan Ave", url: "bricktheater.com", notes: "Brooklyn's main incubator for innovative and experimental theater. Close to work base — check their calendar regularly." },
-  { name: "Mabou Mines", hood: "East Village", cat: "theater", lat: 40.7268, lng: -73.9810, address: "150 First Ave", url: "maboumines.org", notes: "Lee Breuer's company — third pillar of Theater of Images alongside Wilson and Foreman. Puppetry, animation, and live performance fused." },
-  { name: "Park Avenue Armory", hood: "Upper East Side", cat: "theater", lat: 40.7637, lng: -73.9642, address: "643 Park Ave", url: "armoryonpark.org", notes: "Massive 55,000 sq ft drill hall for large-scale immersive and experimental work. Robert Wilson, Kara Walker, Marina Abramovic have all shown here. The space demands architectural thinking." },
-  { name: "BAM (Brooklyn Academy of Music)", hood: "Fort Greene", cat: "theater", lat: 40.6858, lng: -73.9774, address: "30 Lafayette Ave", url: "bam.org", notes: "NYC's premier presenter of international avant-garde. Pina Bausch, Wilson, van Hove, Lepage, Complicité — all showed at BAM. BAMnext Wave festival (fall) is essential." },
-  { name: "St. Ann's Warehouse", hood: "DUMBO", cat: "theater", lat: 40.7033, lng: -73.9897, address: "45 Water St", url: "stannswarehouse.org", notes: "Brooklyn's key importer of international experimental theater. Complicité, Kneehigh, major UK and European work. Industrial space under the Manhattan Bridge — the space itself is part of the work." },
-  { name: "HERE Arts Center", hood: "SoHo", cat: "theater", lat: 40.7249, lng: -74.0043, address: "145 Sixth Ave", url: "here.org", notes: "Interdisciplinary performance space. Home of PROTOTYPE Festival (opera-theater). Annie Dorsen, Taylor Mac, and other artists working at the intersection of theater, music, and technology." },
-  { name: "The Public Theater", hood: "NoHo", cat: "theater", lat: 40.7295, lng: -73.9903, address: "425 Lafayette St", url: "publictheater.org", notes: "Joe Papp's theater — the essential bridge between experimental and mainstream American theater. Shakespeare in the Park, new American plays, and adventurous programming. Where Hamilton started." },
+  {
+    name: "Performance Space New York", hood: "East Village", cat: "theater",
+    lat: 40.7264, lng: -73.9816, address: "150 First Ave", url: "performancespacenewyork.org",
+    wiki: "Performance Space New York",
+    notes: "Center of gravity for avant-garde performance in NYC. Summer 2026 residencies: Holland Andrews + yuniya edi kwon. Works-in-progress, radical interdisciplinary work."
+  },
+  {
+    name: "La MaMa Experimental Theatre Club", hood: "East Village", cat: "theater",
+    lat: 40.7261, lng: -73.9892, address: "66–74 E 4th St", url: "lamama.org",
+    wiki: "La MaMa Experimental Theatre Club",
+    notes: "Founded by Ellen Stewart 1961. Original incubator of American avant-garde. Multiple stages and a global network. Fall season announcements drop in August."
+  },
+  {
+    name: "The Performing Garage (Wooster Group)", hood: "SoHo", cat: "theater",
+    lat: 40.7234, lng: -74.0030, address: "33 Wooster St", url: "thewoostergroup.org",
+    wiki: "Wooster Group",
+    notes: "Wooster Group home since 1975. Elizabeth LeCompte, Spalding Gray. The room where Rumstick Road was performed. Open rehearsals and labs occasionally."
+  },
+  {
+    name: "The Brick Theater", hood: "Williamsburg", cat: "theater",
+    lat: 40.7138, lng: -73.9513, address: "579 Metropolitan Ave", url: "bricktheater.com",
+    wiki: "The Brick (theater)",
+    notes: "Brooklyn's main incubator for innovative and experimental theater. Close to work base — check their calendar regularly."
+  },
+  {
+    name: "Mabou Mines", hood: "East Village", cat: "theater",
+    lat: 40.7268, lng: -73.9810, address: "150 First Ave", url: "maboumines.org",
+    wiki: "Mabou Mines",
+    notes: "Lee Breuer's company — third pillar of Theater of Images alongside Wilson and Foreman. Puppetry, animation, and live performance fused."
+  },
+  {
+    name: "Park Avenue Armory", hood: "Upper East Side", cat: "theater",
+    lat: 40.7637, lng: -73.9642, address: "643 Park Ave", url: "armoryonpark.org",
+    wiki: "Park Avenue Armory",
+    notes: "Massive 55,000 sq ft drill hall for large-scale immersive and experimental work. Robert Wilson, Kara Walker, Marina Abramovic have all shown here. The space demands architectural thinking."
+  },
+  {
+    name: "BAM (Brooklyn Academy of Music)", hood: "Fort Greene", cat: "theater",
+    lat: 40.6858, lng: -73.9774, address: "30 Lafayette Ave", url: "bam.org",
+    wiki: "Brooklyn Academy of Music",
+    notes: "NYC's premier presenter of international avant-garde. Pina Bausch, Wilson, van Hove, Lepage, Complicité — all showed at BAM. BAMnext Wave festival (fall) is essential."
+  },
+  {
+    name: "St. Ann's Warehouse", hood: "DUMBO", cat: "theater",
+    lat: 40.7033, lng: -73.9897, address: "45 Water St", url: "stannswarehouse.org",
+    wiki: "St. Ann's Warehouse",
+    notes: "Brooklyn's key importer of international experimental theater. Complicité, Kneehigh, major UK and European work. Industrial space under the Manhattan Bridge — the space itself is part of the work."
+  },
+  {
+    name: "HERE Arts Center", hood: "SoHo", cat: "theater",
+    lat: 40.7249, lng: -74.0043, address: "145 Sixth Ave", url: "here.org",
+    wiki: "HERE Arts Center",
+    notes: "Interdisciplinary performance space. Home of PROTOTYPE Festival (opera-theater). Annie Dorsen, Taylor Mac, and other artists working at the intersection of theater, music, and technology."
+  },
+  {
+    name: "The Public Theater", hood: "NoHo", cat: "theater",
+    lat: 40.7295, lng: -73.9903, address: "425 Lafayette St", url: "publictheater.org",
+    wiki: "The Public Theater",
+    notes: "Joe Papp's theater — the essential bridge between experimental and mainstream American theater. Shakespeare in the Park, new American plays, and adventurous programming. Where Hamilton started."
+  },
 
   // Broadway / Major Stage
-  { name: "The Shed", hood: "Hudson Yards", cat: "broadway", lat: 40.7540, lng: -74.0019, address: "545 W 30th St", url: "theshed.org", notes: "NYC's newest major cultural venue — purpose-built for artists working at the intersection of performing arts, visual art, and technology. A retractable outer shell transforms the space. The most technically advanced venue in the city for projection and large-scale installation work." },
-  { name: "Lincoln Center Theater", hood: "Upper West Side", cat: "broadway", lat: 40.7725, lng: -73.9832, address: "150 W 65th St", url: "lct.org", notes: "Vivian Beaumont (large) + Mitzi Newhouse (small) + Claire Tow (rooftop). Major productions including Complicité collaborations, new American and international work. Bridge between experimental and commercial." },
-  { name: "Signature Theatre", hood: "Hell's Kitchen", cat: "broadway", lat: 40.7617, lng: -73.9937, address: "480 W 42nd St", url: "signaturetheatre.org", notes: "Playwright-centered theater — each season dedicates to a single playwright's body of work (Edward Albee, Sam Shepard, Suzan-Lori Parks, etc.). Three stages. Rigorous and writer-first." },
-  { name: "Playwrights Horizons", hood: "Hell's Kitchen", cat: "broadway", lat: 40.7614, lng: -73.9940, address: "416 W 42nd St", url: "playwrightshorizons.org", notes: "Since 1971 — the leading new play development theater. James Lapine, Stephen Sondheim, Wendy Wasserstein, and virtually every major American playwright developed work here. Essential for new writing." },
-  { name: "Second Stage Theater", hood: "Hell's Kitchen", cat: "broadway", lat: 40.7596, lng: -73.9921, address: "305 W 43rd St", url: "2st.com", notes: "Exclusively produces American plays and musicals. Broadway house + smaller off-Broadway space. Serious commissioning and development program." },
-  { name: "The Majestic Theatre", hood: "Theater District", cat: "broadway", lat: 40.7573, lng: -73.9868, address: "245 W 44th St", url: "broadwayworld.com/venues/Majestic-Theatre", notes: "Home of Phantom of the Opera for 35 years. Study the technical rigging, the chandelier drop, the automation systems — a masterclass in theatrical engineering at commercial scale. Harold Prince's production design thinking." },
+  {
+    name: "The Shed", hood: "Hudson Yards", cat: "broadway",
+    lat: 40.7540, lng: -74.0019, address: "545 W 30th St", url: "theshed.org",
+    wiki: "The Shed (arts center)",
+    notes: "NYC's newest major cultural venue — purpose-built for artists working at the intersection of performing arts, visual art, and technology. A retractable outer shell transforms the space. The most technically advanced venue in the city for projection and large-scale installation work."
+  },
+  {
+    name: "Lincoln Center Theater", hood: "Upper West Side", cat: "broadway",
+    lat: 40.7725, lng: -73.9832, address: "150 W 65th St", url: "lct.org",
+    wiki: "Lincoln Center Theater",
+    notes: "Vivian Beaumont (large) + Mitzi Newhouse (small) + Claire Tow (rooftop). Major productions including Complicité collaborations, new American and international work. Bridge between experimental and commercial."
+  },
+  {
+    name: "Signature Theatre", hood: "Hell's Kitchen", cat: "broadway",
+    lat: 40.7617, lng: -73.9937, address: "480 W 42nd St", url: "signaturetheatre.org",
+    wiki: "Signature Theatre (New York City)",
+    notes: "Playwright-centered theater — each season dedicates to a single playwright's body of work (Edward Albee, Sam Shepard, Suzan-Lori Parks, etc.). Three stages. Rigorous and writer-first."
+  },
+  {
+    name: "Playwrights Horizons", hood: "Hell's Kitchen", cat: "broadway",
+    lat: 40.7614, lng: -73.9940, address: "416 W 42nd St", url: "playwrightshorizons.org",
+    wiki: "Playwrights Horizons",
+    notes: "Since 1971 — the leading new play development theater. James Lapine, Stephen Sondheim, Wendy Wasserstein, and virtually every major American playwright developed work here. Essential for new writing."
+  },
+  {
+    name: "Second Stage Theater", hood: "Hell's Kitchen", cat: "broadway",
+    lat: 40.7596, lng: -73.9921, address: "305 W 43rd St", url: "2st.com",
+    wiki: "Second Stage Theatre",
+    notes: "Exclusively produces American plays and musicals. Broadway house + smaller off-Broadway space. Serious commissioning and development program."
+  },
+  {
+    name: "The Majestic Theatre", hood: "Theater District", cat: "broadway",
+    lat: 40.7573, lng: -73.9868, address: "245 W 44th St", url: "broadwayworld.com/venues/Majestic-Theatre",
+    wiki: "Majestic Theatre (New York City)",
+    notes: "Home of Phantom of the Opera for 35 years. Study the technical rigging, the chandelier drop, the automation systems — a masterclass in theatrical engineering at commercial scale. Harold Prince's production design thinking."
+  },
 
   // Performance Art
-  { name: "Dixon Place", hood: "Lower East Side", cat: "perf", lat: 40.7208, lng: -73.9942, address: "161A Chrystie St", url: "dixonplace.org", notes: "HOT! Festival Jul 6–25. Long-running home of queer experimental work. Risk-taking at small scale — good for scanning emerging artists." },
-  { name: "New York Live Arts", hood: "Chelsea", cat: "perf", lat: 40.7430, lng: -74.0001, address: "219 W 19th St", url: "newyorklivearts.org", notes: "Bill T. Jones/Arnie Zane space. Strong interdisciplinary and dance-based performance. Fellowship and residency program for dance artists." },
-  { name: "The Kitchen", hood: "Chelsea", cat: "perf", lat: 40.7465, lng: -74.0070, address: "512 W 19th St", url: "thekitchen.org", notes: "Since 1971 — early home of Laurie Anderson, Philip Glass, Meredith Monk, Trisha Brown. Essential node in the downtown experimental scene. Always programming something interesting." },
-  { name: "New York City Center", hood: "Midtown", cat: "perf", lat: 40.7601, lng: -73.9796, address: "131 W 55th St", url: "nycitycenter.org", notes: "Fall for Dance (September) — 5 programs over 10 nights, $30 tickets, major dance companies. Encores! series for rarely produced musicals. Great survey of contemporary dance landscape." },
+  {
+    name: "Dixon Place", hood: "Lower East Side", cat: "perf",
+    lat: 40.7208, lng: -73.9942, address: "161A Chrystie St", url: "dixonplace.org",
+    wiki: "Dixon Place",
+    notes: "HOT! Festival Jul 6–25. Long-running home of queer experimental work. Risk-taking at small scale — good for scanning emerging artists."
+  },
+  {
+    name: "New York Live Arts", hood: "Chelsea", cat: "perf",
+    lat: 40.7430, lng: -74.0001, address: "219 W 19th St", url: "newyorklivearts.org",
+    wiki: "New York Live Arts",
+    notes: "Bill T. Jones/Arnie Zane space. Strong interdisciplinary and dance-based performance. Fellowship and residency program for dance artists."
+  },
+  {
+    name: "The Kitchen", hood: "Chelsea", cat: "perf",
+    lat: 40.7465, lng: -74.0070, address: "512 W 19th St", url: "thekitchen.org",
+    wiki: "The Kitchen (performance space)",
+    notes: "Since 1971 — early home of Laurie Anderson, Philip Glass, Meredith Monk, Trisha Brown. Essential node in the downtown experimental scene. Always programming something interesting."
+  },
+  {
+    name: "New York City Center", hood: "Midtown", cat: "perf",
+    lat: 40.7601, lng: -73.9796, address: "131 W 55th St", url: "nycitycenter.org",
+    wiki: "New York City Center",
+    notes: "Fall for Dance (September) — 5 programs over 10 nights, $30 tickets, major dance companies. Encores! series for rarely produced musicals. Great survey of contemporary dance landscape."
+  },
 
-  // Visual Art / Installation (relevant for projection/tech artists)
-  { name: "MoMA PS1", hood: "Long Island City", cat: "visual", lat: 40.7452, lng: -73.9376, address: "22-25 Jackson Ave, Queens", url: "momaps1.org", notes: "MoMA's contemporary branch in Queens — more experimental, installation-heavy, performance-adjacent. Warm Up summer music series. Key space for artists working between visual art and performance." },
-  { name: "Pioneer Works", hood: "Red Hook", cat: "visual", lat: 40.6759, lng: -74.0131, address: "159 Pioneer St", url: "pioneerworks.org", notes: "Red Hook arts center in a former ironworks. Massive open space used for large-scale installation, performance, and technology-art crossovers. Residencies for artists and scientists. Summer Sundays events are free and excellent." },
-  { name: "Dia Chelsea", hood: "Chelsea", cat: "visual", lat: 40.7484, lng: -74.0059, address: "537 W 22nd St", url: "diaart.org", notes: "Dia Foundation's Chelsea space. Minimalist and conceptual art — Dan Flavin, Donald Judd, Richard Serra. Essential for understanding the visual and spatial language that runs parallel to Theater of Images." },
+  // Visual Art / Installation
+  {
+    name: "MoMA PS1", hood: "Long Island City", cat: "visual",
+    lat: 40.7452, lng: -73.9376, address: "22-25 Jackson Ave, Queens", url: "momaps1.org",
+    wiki: "MoMA PS1",
+    notes: "MoMA's contemporary branch in Queens — more experimental, installation-heavy, performance-adjacent. Warm Up summer music series. Key space for artists working between visual art and performance."
+  },
+  {
+    name: "Pioneer Works", hood: "Red Hook", cat: "visual",
+    lat: 40.6759, lng: -74.0131, address: "159 Pioneer St", url: "pioneerworks.org",
+    wiki: "Pioneer Works",
+    notes: "Red Hook arts center in a former ironworks. Massive open space used for large-scale installation, performance, and technology-art crossovers. Residencies for artists and scientists. Summer Sundays events are free and excellent."
+  },
+  {
+    name: "Dia Chelsea", hood: "Chelsea", cat: "visual",
+    lat: 40.7484, lng: -74.0059, address: "537 W 22nd St", url: "diaart.org",
+    wiki: "Dia Art Foundation",
+    notes: "Dia Foundation's Chelsea space. Minimalist and conceptual art — Dan Flavin, Donald Judd, Richard Serra. Essential for understanding the visual and spatial language that runs parallel to Theater of Images."
+  },
 
   // Film
-  { name: "Anthology Film Archives", hood: "East Village", cat: "film", lat: 40.7253, lng: -73.9882, address: "32 Second Ave", url: "anthologyfilmarchives.org", notes: "THE avant-garde cinema venue in NYC. Co-founded by Jonas Mekas. Essential Cinema program runs year-round — rotating canonical experimental film: Brakhage, Deren, Snow, Mekas, Warhol. Check calendar weekly." },
-  { name: "BAM Rose Cinemas", hood: "Fort Greene", cat: "film", lat: 40.6862, lng: -73.9779, address: "30 Lafayette Ave", url: "bam.org/film", notes: "Brooklyn arthouse + experimental film. Filmmaker Q&As, retrospectives. BAMcinemaFest in June is the best festival for independent and international film in NYC." },
-  { name: "Microscope Gallery", hood: "Bushwick", cat: "film", lat: 40.7033, lng: -73.9288, address: "1329 Willoughby Ave", url: "microscopegallery.com", notes: "Specialized in moving image, sound, digital, and performance art. Weekly screenings. Essential for experimental film/video alongside theater research." },
+  {
+    name: "Anthology Film Archives", hood: "East Village", cat: "film",
+    lat: 40.7253, lng: -73.9882, address: "32 Second Ave", url: "anthologyfilmarchives.org",
+    wiki: "Anthology Film Archives",
+    notes: "THE avant-garde cinema venue in NYC. Co-founded by Jonas Mekas. Essential Cinema program runs year-round — rotating canonical experimental film: Brakhage, Deren, Snow, Mekas, Warhol. Check calendar weekly."
+  },
+  {
+    name: "BAM Rose Cinemas", hood: "Fort Greene", cat: "film",
+    lat: 40.6862, lng: -73.9779, address: "30 Lafayette Ave", url: "bam.org/film",
+    wiki: "Brooklyn Academy of Music",
+    notes: "Brooklyn arthouse + experimental film. Filmmaker Q&As, retrospectives. BAMcinemaFest in June is the best festival for independent and international film in NYC."
+  },
+  {
+    name: "Microscope Gallery", hood: "Bushwick", cat: "film",
+    lat: 40.7033, lng: -73.9288, address: "1329 Willoughby Ave", url: "microscopegallery.com",
+    wiki: null,
+    notes: "Specialized in moving image, sound, digital, and performance art. Weekly screenings. Essential for experimental film/video alongside theater research."
+  },
 
   // Opera / Classical
-  { name: "Metropolitan Opera House", hood: "Upper West Side", cat: "opera", lat: 40.7724, lng: -73.9836, address: "30 Lincoln Center Plaza", url: "metopera.org", notes: "Largest opera company in the world. Robert Lepage's Ring Cycle (2010) used massive kinetic stage machinery — a key reference for tech-in-theater at scale. Es Devlin designed sets here. Study the technical infrastructure." },
-  { name: "David H. Koch Theater", hood: "Upper West Side", cat: "opera", lat: 40.7720, lng: -73.9831, address: "20 Lincoln Center Plaza", url: "nycballet.com", notes: "NY City Ballet. Balanchine's neoclassical tradition + contemporary choreographers (Justin Peck, Crystal Pite guest works). Important for understanding how classical vocabulary gets reimagined." },
-  { name: "Lincoln Center — Alice Tully Hall", hood: "Upper West Side", cat: "opera", lat: 40.7727, lng: -73.9845, address: "1941 Broadway", url: "lincolncenter.org", notes: "White Light Festival (fall) — major international series focused on spiritual and transcendent performance. NY Film Festival (October). Check summer programming for outdoor events." },
-  { name: "Carnegie Hall", hood: "Midtown", cat: "opera", lat: 40.7651, lng: -73.9800, address: "881 7th Ave", url: "carnegiehall.org", notes: "Zankel Hall (below) programs contemporary and experimental music alongside the main stage. Important for understanding the continuum from classical to experimental in the concert hall context." },
+  {
+    name: "Metropolitan Opera House", hood: "Upper West Side", cat: "opera",
+    lat: 40.7724, lng: -73.9836, address: "30 Lincoln Center Plaza", url: "metopera.org",
+    wiki: "Metropolitan Opera House (Lincoln Center)",
+    notes: "Largest opera company in the world. Robert Lepage's Ring Cycle (2010) used massive kinetic stage machinery — a key reference for tech-in-theater at scale. Es Devlin designed sets here. Study the technical infrastructure."
+  },
+  {
+    name: "David H. Koch Theater", hood: "Upper West Side", cat: "opera",
+    lat: 40.7720, lng: -73.9831, address: "20 Lincoln Center Plaza", url: "nycballet.com",
+    wiki: "David H. Koch Theater",
+    notes: "NY City Ballet. Balanchine's neoclassical tradition + contemporary choreographers (Justin Peck, Crystal Pite guest works). Important for understanding how classical vocabulary gets reimagined."
+  },
+  {
+    name: "Lincoln Center — Alice Tully Hall", hood: "Upper West Side", cat: "opera",
+    lat: 40.7727, lng: -73.9845, address: "1941 Broadway", url: "lincolncenter.org",
+    wiki: "Alice Tully Hall",
+    notes: "White Light Festival (fall) — major international series focused on spiritual and transcendent performance. NY Film Festival (October). Check summer programming for outdoor events."
+  },
+  {
+    name: "Carnegie Hall", hood: "Midtown", cat: "opera",
+    lat: 40.7651, lng: -73.9800, address: "881 7th Ave", url: "carnegiehall.org",
+    wiki: "Carnegie Hall",
+    notes: "Zankel Hall (below) programs contemporary and experimental music alongside the main stage. Important for understanding the continuum from classical to experimental in the concert hall context."
+  },
 
-  // Music/Performance
-  { name: "National Sawdust", hood: "Williamsburg", cat: "music", lat: 40.7193, lng: -73.9577, address: "80 N 6th St", url: "nationalsawdust.org", notes: "Experimental music and performance hybrid space in Brooklyn. Intimate, acoustically superb. Artists at the intersection of classical, electronic, and performance. Close to work base." },
+  // Music
+  {
+    name: "National Sawdust", hood: "Williamsburg", cat: "music",
+    lat: 40.7193, lng: -73.9577, address: "80 N 6th St", url: "nationalsawdust.org",
+    wiki: "National Sawdust",
+    notes: "Experimental music and performance hybrid space in Brooklyn. Intimate, acoustically superb. Artists at the intersection of classical, electronic, and performance. Close to work base."
+  },
 
-  // Archive / Library
-  { name: "NYPL Performing Arts Library", hood: "Midtown", cat: "archive", lat: 40.7726, lng: -73.9834, address: "40 Lincoln Center Plaza", url: "nypl.org/locations/lpa", notes: "Foreman production materials, Wilson documentation, PAJ back issues, rare performance recordings and video. Free with library card. Essential for deep research." },
-  { name: "Watermill Center", hood: "Long Island", cat: "theater", lat: 40.9093, lng: -72.3540, address: "39 Water Mill Towd Rd", url: "watermillcenter.org", notes: "Robert Wilson's laboratory. Jul 5–Aug 2 summer program — 60–100 international artists in intensive collaboration. First summer post-Wilson, historically significant. Day trip from NYC." },
+  // Archive
+  {
+    name: "NYPL Performing Arts Library", hood: "Midtown", cat: "archive",
+    lat: 40.7726, lng: -73.9834, address: "40 Lincoln Center Plaza", url: "nypl.org/locations/lpa",
+    wiki: "New York Public Library for the Performing Arts",
+    notes: "Foreman production materials, Wilson documentation, PAJ back issues, rare performance recordings and video. Free with library card. Essential for deep research."
+  },
+  {
+    name: "Watermill Center", hood: "Long Island", cat: "theater",
+    lat: 40.9093, lng: -72.3540, address: "39 Water Mill Towd Rd", url: "watermillcenter.org",
+    wiki: "The Watermill Center",
+    notes: "Robert Wilson's laboratory. Jul 5–Aug 2 summer program — 60–100 international artists in intensive collaboration. First summer post-Wilson, historically significant. Day trip from NYC."
+  },
 ];
 
 const colors = {
@@ -181,9 +417,43 @@ const pillFg = {
   music: "#fdba74", archive: "#a1a1aa"
 };
 
+// gradient placeholders per category
+const gradients = {
+  theater:  "linear-gradient(135deg, #1a0a3a 0%, #2d1b69 100%)",
+  broadway: "linear-gradient(135deg, #071820 0%, #0c3a47 100%)",
+  perf:     "linear-gradient(135deg, #200010 0%, #4b001e 100%)",
+  visual:   "linear-gradient(135deg, #1a0a3a 0%, #4c1d95 100%)",
+  film:     "linear-gradient(135deg, #031a0e 0%, #064e28 100%)",
+  opera:    "linear-gradient(135deg, #1f0800 0%, #431a00 100%)",
+  music:    "linear-gradient(135deg, #1a0e00 0%, #3d2000 100%)",
+  archive:  "linear-gradient(135deg, #0e0e0e 0%, #222 100%)",
+};
+
 const markerRefs = [];
 
-// Build sidebar list
+// --- Wikipedia image fetch ---
+const imgCache = {};
+
+async function fetchWikiImage(wikiTitle) {
+  if (!wikiTitle) return null;
+  if (imgCache[wikiTitle] !== undefined) return imgCache[wikiTitle];
+
+  try {
+    const url = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(wikiTitle)}&prop=pageimages&format=json&pithumbsize=640&origin=*`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const pages = data.query.pages;
+    const page = pages[Object.keys(pages)[0]];
+    const src = page?.thumbnail?.source || null;
+    imgCache[wikiTitle] = src;
+    return src;
+  } catch {
+    imgCache[wikiTitle] = null;
+    return null;
+  }
+}
+
+// --- Sidebar ---
 const list = document.getElementById('venue-list');
 venues.forEach((v, i) => {
   const el = document.createElement('div');
@@ -200,7 +470,7 @@ venues.forEach((v, i) => {
   list.appendChild(el);
 });
 
-// Build map markers
+// --- Map markers ---
 venues.forEach((v, i) => {
   const color = colors[v.cat];
   const icon = L.divIcon({
@@ -223,16 +493,53 @@ venues.forEach((v, i) => {
   markerRefs.push(m);
 });
 
-// Info card
-function openCard(v) {
-  document.getElementById('card-cat').textContent = catName[v.cat];
-  document.getElementById('card-cat').style.background = pillBg[v.cat];
-  document.getElementById('card-cat').style.color = pillFg[v.cat];
-  document.getElementById('card-name').textContent = v.name;
-  document.getElementById('card-hood').textContent = v.hood + ' · ' + v.address;
-  document.getElementById('card-notes').textContent = v.notes;
-  document.getElementById('card-link').href = 'https://' + v.url;
+// --- Info card ---
+function initials(name) {
+  return name.split(/\s+/).filter(w => /^[A-Z]/.test(w)).slice(0, 2).map(w => w[0]).join('');
+}
+
+async function openCard(v) {
+  // fill text immediately
+  const catEl   = document.getElementById('card-cat');
+  const nameEl  = document.getElementById('card-name');
+  const hoodEl  = document.getElementById('card-hood');
+  const notesEl = document.getElementById('card-notes');
+  const linkEl  = document.getElementById('card-link');
+  const wrap    = document.getElementById('card-img-wrap');
+  const img     = document.getElementById('card-img');
+  const ph      = document.getElementById('card-img-placeholder');
+  const cap     = document.getElementById('card-img-caption');
+
+  catEl.textContent = catName[v.cat];
+  catEl.style.background = pillBg[v.cat];
+  catEl.style.color = pillFg[v.cat];
+  nameEl.textContent = v.name;
+  hoodEl.textContent = v.hood + ' · ' + v.address;
+  notesEl.textContent = v.notes;
+  linkEl.href = 'https://' + v.url;
+
+  // reset image area — show gradient + initials placeholder while loading
+  img.classList.add('loading');
+  img.src = '';
+  wrap.style.background = gradients[v.cat];
+  ph.textContent = initials(v.name);
+  cap.textContent = '';
+
   document.getElementById('card').classList.add('open');
+
+  // fetch Wikipedia image async
+  const src = await fetchWikiImage(v.wiki);
+  if (src) {
+    img.onload = () => {
+      img.classList.remove('loading');
+      cap.textContent = '© Wikipedia / CC';
+    };
+    img.onerror = () => {
+      img.classList.add('loading'); // keep hidden, show placeholder
+      cap.textContent = '';
+    };
+    img.src = src;
+  }
 }
 
 function closeCard() {
