@@ -26,6 +26,19 @@ body { display: flex; }
 
 #map { flex: 1; }
 
+#preview { width: 360px; flex-shrink: 0; display: none; flex-direction: column; border-left: 1px solid #1a1a1a; background: #0a0a0a; }
+#preview.open { display: flex; }
+#preview-header { padding: 10px 14px; border-bottom: 1px solid #1a1a1a; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+#preview-title { font-size: 11px; font-weight: 600; color: #ddd; font-family: -apple-system, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+#preview-actions { display: flex; gap: 6px; flex-shrink: 0; }
+#preview-actions a, #preview-close { font-size: 10px; color: #555; text-decoration: none; background: none; border: none; cursor: pointer; padding: 3px 6px; border-radius: 3px; font-family: -apple-system, sans-serif; }
+#preview-actions a:hover, #preview-close:hover { color: #eee; background: #1a1a1a; }
+#preview iframe { flex: 1; border: none; background: #111; }
+#preview-blocked { flex: 1; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center; }
+#preview-blocked p { font-size: 11px; color: #444; font-family: -apple-system, sans-serif; line-height: 1.6; }
+#preview-blocked a { font-size: 11px; color: #7c6fe0; text-decoration: none; }
+#preview-blocked a:hover { text-decoration: underline; }
+
 .leaflet-popup-content-wrapper { background: #111; border: 1px solid #2a2a2a; border-radius: 8px; box-shadow: 0 4px 24px rgba(0,0,0,0.7); }
 .leaflet-popup-content { color: #eee; font-family: -apple-system, sans-serif; font-size: 12px; margin: 12px 14px; min-width: 180px; }
 .leaflet-popup-content h3 { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
@@ -47,6 +60,21 @@ body { display: flex; }
   <div id="venue-list"></div>
 </div>
 <div id="map"></div>
+
+<div id="preview">
+  <div id="preview-header">
+    <span id="preview-title"></span>
+    <div id="preview-actions">
+      <a id="preview-link" href="#" target="_blank">↗ 새 탭</a>
+      <button id="preview-close" onclick="closePreview()">✕</button>
+    </div>
+  </div>
+  <iframe id="preview-frame" src="about:blank" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+  <div id="preview-blocked">
+    <p>이 사이트는 임베드를 허용하지 않아요.<br>새 탭에서 열어요.</p>
+    <a id="preview-blocked-link" href="#" target="_blank">↗ 새 탭으로 열기</a>
+  </div>
+</div>
 <script>
 const map = L.map('map', { center: [40.730, -73.984], zoom: 13 });
 
@@ -122,6 +150,7 @@ venues.forEach((v, i) => {
     el.classList.add('selected');
     map.setView([v.lat, v.lng], 15, { animate: true });
     markerRefs[i].openPopup();
+    openPreview(v);
   };
   list.appendChild(el);
 });
@@ -147,9 +176,49 @@ venues.forEach((v, i) => {
     document.querySelectorAll('.venue-item').forEach(e => e.classList.remove('selected'));
     const el = document.getElementById(`vi-${i}`);
     if (el) { el.classList.add('selected'); el.scrollIntoView({ block: 'nearest' }); }
+    openPreview(v);
   });
   markerRefs.push(m);
 });
+
+function openPreview(v) {
+  const url = 'https://' + v.url;
+  const panel = document.getElementById('preview');
+  const frame = document.getElementById('preview-frame');
+  const blocked = document.getElementById('preview-blocked');
+
+  document.getElementById('preview-title').textContent = v.name;
+  document.getElementById('preview-link').href = url;
+  document.getElementById('preview-blocked-link').href = url;
+
+  panel.classList.add('open');
+  frame.style.display = 'block';
+  blocked.style.display = 'none';
+
+  frame.src = url;
+
+  // detect if iframe was blocked
+  frame.onerror = () => showBlocked(url);
+  setTimeout(() => {
+    try {
+      // if src is still about:blank or cross-origin blocked, show fallback
+      if (!frame.contentDocument) showBlocked(url);
+    } catch(e) {
+      // cross-origin is fine, means it loaded
+    }
+  }, 3000);
+}
+
+function showBlocked(url) {
+  document.getElementById('preview-frame').style.display = 'none';
+  const blocked = document.getElementById('preview-blocked');
+  blocked.style.display = 'flex';
+}
+
+function closePreview() {
+  document.getElementById('preview').classList.remove('open');
+  document.getElementById('preview-frame').src = 'about:blank';
+}
 </script>
 </body>
 </html>
