@@ -432,11 +432,25 @@ const gradients = {
 
 const markerRefs = [];
 
-// --- Google Street View ---
+// --- Image sources ---
 const SV_KEY = 'AIzaSyCIpgTbmatAn_hEDmXh7aSblLpPgnZiwsg';
 
 function streetViewUrl(lat, lng) {
   return `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${lat},${lng}&fov=80&pitch=10&key=${SV_KEY}`;
+}
+
+const wikiCache = {};
+async function fetchWikiImage(title) {
+  if (!title) return null;
+  if (wikiCache[title] !== undefined) return wikiCache[title];
+  try {
+    const url = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=pageimages&format=json&pithumbsize=640&origin=*`;
+    const data = await (await fetch(url)).json();
+    const page = Object.values(data.query.pages)[0];
+    return (wikiCache[title] = page?.thumbnail?.source || null);
+  } catch {
+    return (wikiCache[title] = null);
+  }
 }
 
 // --- Sidebar ---
@@ -484,7 +498,7 @@ function initials(name) {
   return name.split(/\s+/).filter(w => /^[A-Z]/.test(w)).slice(0, 2).map(w => w[0]).join('');
 }
 
-function openCard(v) {
+async function openCard(v) {
   document.getElementById('card-cat').textContent = catName[v.cat];
   document.getElementById('card-cat').style.background = pillBg[v.cat];
   document.getElementById('card-cat').style.color = pillFg[v.cat];
@@ -498,23 +512,29 @@ function openCard(v) {
   const ph   = document.getElementById('card-img-placeholder');
   const cap  = document.getElementById('card-img-caption');
 
-  // show gradient + initials while Street View loads
+  // reset to gradient placeholder
   wrap.style.background = gradients[v.cat];
   ph.textContent = initials(v.name);
   img.classList.add('loading');
-
-  img.onload = () => {
-    img.classList.remove('loading');
-    ph.textContent = '';
-    cap.textContent = '© Google Street View';
-  };
-  img.onerror = () => {
-    img.classList.add('loading');
-    cap.textContent = '';
-  };
-  img.src = streetViewUrl(v.lat, v.lng);
+  img.src = '';
+  cap.textContent = '';
 
   document.getElementById('card').classList.add('open');
+
+  function loadImg(src, caption) {
+    return new Promise(resolve => {
+      img.onload  = () => { img.classList.remove('loading'); ph.textContent = ''; cap.textContent = caption; resolve(true); };
+      img.onerror = () => resolve(false);
+      img.src = src;
+    });
+  }
+
+  // 1st try: Wikipedia iconic photo
+  const wikiSrc = await fetchWikiImage(v.wiki);
+  if (wikiSrc) { await loadImg(wikiSrc, '© Wikipedia / CC'); return; }
+
+  // 2nd try: Google Street View
+  await loadImg(streetViewUrl(v.lat, v.lng), '© Google Street View');
 }
 
 function closeCard() {
