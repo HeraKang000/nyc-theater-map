@@ -264,37 +264,34 @@ html, body { width: 100%; height: 100%; background: #0a0a0a; color: #ddd; font-f
   #view-map { position: relative; }
   #map { width: 100%; }
 
-  /* Info card becomes bottom sheet */
+  /* Info card — fixed bottom sheet, no scroll */
   #card {
     position: fixed !important;
     bottom: 0; left: 0; right: 0;
     width: 100% !important;
-    max-height: 78vh;
+    height: 62vh;
+    max-height: none;
     border-left: none !important;
-    border-top: 1px solid #1a1a1a;
+    border-top: 1px solid #222;
     display: flex !important;
+    flex-direction: column;
     transform: translateY(100%);
     transition: transform 0.3s ease;
     z-index: 510;
     border-radius: 14px 14px 0 0;
-    overflow-y: auto;
+    overflow: hidden;
   }
   #card.open { transform: translateY(0); }
-  #card-img-wrap { height: 130px; border-radius: 14px 14px 0 0; }
-
-  /* drag handle */
-  #card::before {
-    content: '';
-    display: block;
-    width: 36px; height: 4px;
-    background: #333;
-    border-radius: 2px;
-    margin: 10px auto 0;
-    flex-shrink: 0;
-    position: absolute;
-    top: 0; left: 50%;
-    transform: translateX(-50%);
+  #card-img-wrap { height: 160px; flex-shrink: 0; border-radius: 14px 14px 0 0; }
+  #card-inner { flex: 1; overflow: hidden; padding: 14px 18px 16px; }
+  #card-notes {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 14px;
   }
+  #card-legend { display: none; }
 
   /* --- CALENDAR VIEW --- */
 
@@ -318,33 +315,32 @@ html, body { width: 100%; height: 100%; background: #0a0a0a; color: #ddd; font-f
   /* Cal main fills the screen */
   #cal-main { width: 100%; }
 
-  /* Cal detail becomes bottom sheet */
+  /* Cal detail — fixed bottom sheet, no scroll */
   #cal-detail {
     position: fixed !important;
     bottom: 0; left: 0; right: 0;
     width: 100% !important;
-    max-height: 78vh;
+    height: 62vh;
+    max-height: none;
     border-left: none !important;
-    border-top: 1px solid #1a1a1a;
+    border-top: 1px solid #222;
     display: flex !important;
+    flex-direction: column;
     transform: translateY(100%);
     transition: transform 0.3s ease;
     z-index: 510;
     border-radius: 14px 14px 0 0;
-    overflow-y: auto;
+    overflow: hidden;
   }
   #cal-detail.open { transform: translateY(0); }
-  #cal-detail-img { height: 130px; border-radius: 14px 14px 0 0; }
-  #cal-detail::before {
-    content: '';
-    display: block;
-    width: 36px; height: 4px;
-    background: #333;
-    border-radius: 2px;
-    position: absolute;
-    top: 8px; left: 50%;
-    transform: translateX(-50%);
-    z-index: 1;
+  #cal-detail-img { height: 160px; flex-shrink: 0; border-radius: 14px 14px 0 0; }
+  #cal-detail-body { flex: 1; overflow: hidden; padding: 14px 18px 16px; }
+  #cal-detail-notes {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 14px;
   }
 
   /* map filter button in calendar topbar */
@@ -851,7 +847,7 @@ async function openCard(v) {
   document.getElementById('card').classList.add('open');
   if (isMobile()) {
     document.getElementById('sidebar').classList.remove('drawer-open');
-    document.getElementById('overlay').classList.add('show');
+    document.getElementById('overlay').classList.remove('show');
   }
 
   await loadVenueImage(
@@ -1041,7 +1037,7 @@ async function openDetail(ev) {
   document.getElementById('cal-detail-link').href = 'https://' + ev.url;
   document.getElementById('cal-detail-img-ph').textContent = initials(ev.title);
   document.getElementById('cal-detail').classList.add('open');
-  if (isMobile()) document.getElementById('overlay').classList.add('show');
+  if (isMobile()) document.getElementById('overlay').classList.remove('show');
 
   await loadVenueImage(
     document.getElementById('cal-detail-img-el'),
