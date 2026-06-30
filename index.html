@@ -209,6 +209,163 @@ html, body { width: 100%; height: 100%; background: #0a0a0a; color: #ddd; font-f
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 2px; }
+
+/* ── OVERLAY ── */
+#overlay {
+  display: none;
+  position: fixed;
+  inset: 40px 0 0 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 490;
+}
+#overlay.show { display: block; }
+
+/* ── MENU BUTTON (mobile only) ── */
+#menu-btn {
+  display: none;
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+#menu-btn:hover { color: #eee; }
+
+/* ══════════════════════════════
+   MOBILE  (≤ 768px)
+══════════════════════════════ */
+@media (max-width: 768px) {
+
+  #menu-btn { display: block; }
+  #topbar h1 { font-size: 10px; }
+
+  /* --- MAP VIEW --- */
+
+  /* Sidebar becomes a left drawer */
+  #sidebar {
+    position: fixed;
+    top: 40px; left: 0; bottom: 0;
+    z-index: 500;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    width: 72vw;
+    max-width: 300px;
+    border-right: 1px solid #222;
+  }
+  #sidebar.drawer-open {
+    transform: translateX(0);
+    box-shadow: 6px 0 24px rgba(0,0,0,0.6);
+  }
+
+  /* Map fills the screen */
+  #view-map { position: relative; }
+  #map { width: 100%; }
+
+  /* Info card becomes bottom sheet */
+  #card {
+    position: fixed !important;
+    bottom: 0; left: 0; right: 0;
+    width: 100% !important;
+    max-height: 78vh;
+    border-left: none !important;
+    border-top: 1px solid #1a1a1a;
+    display: flex !important;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    z-index: 510;
+    border-radius: 14px 14px 0 0;
+    overflow-y: auto;
+  }
+  #card.open { transform: translateY(0); }
+  #card-img-wrap { height: 130px; border-radius: 14px 14px 0 0; }
+
+  /* drag handle */
+  #card::before {
+    content: '';
+    display: block;
+    width: 36px; height: 4px;
+    background: #333;
+    border-radius: 2px;
+    margin: 10px auto 0;
+    flex-shrink: 0;
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* --- CALENDAR VIEW --- */
+
+  /* Cal sidebar becomes left drawer */
+  #cal-sidebar {
+    position: fixed;
+    top: 40px; left: 0; bottom: 0;
+    z-index: 500;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    width: 72vw;
+    max-width: 280px;
+    border-right: 1px solid #222;
+    background: #0a0a0a;
+  }
+  #cal-sidebar.drawer-open {
+    transform: translateX(0);
+    box-shadow: 6px 0 24px rgba(0,0,0,0.6);
+  }
+
+  /* Cal main fills the screen */
+  #cal-main { width: 100%; }
+
+  /* Cal detail becomes bottom sheet */
+  #cal-detail {
+    position: fixed !important;
+    bottom: 0; left: 0; right: 0;
+    width: 100% !important;
+    max-height: 78vh;
+    border-left: none !important;
+    border-top: 1px solid #1a1a1a;
+    display: flex !important;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    z-index: 510;
+    border-radius: 14px 14px 0 0;
+    overflow-y: auto;
+  }
+  #cal-detail.open { transform: translateY(0); }
+  #cal-detail-img { height: 130px; border-radius: 14px 14px 0 0; }
+  #cal-detail::before {
+    content: '';
+    display: block;
+    width: 36px; height: 4px;
+    background: #333;
+    border-radius: 2px;
+    position: absolute;
+    top: 8px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 1;
+  }
+
+  /* map filter button in calendar topbar */
+  #cal-date-header { display: flex; align-items: center; justify-content: space-between; }
+  #cal-filter-btn {
+    display: flex;
+    font-size: 10px;
+    font-weight: 600;
+    color: #555;
+    background: #111;
+    border: 1px solid #1a1a1a;
+    border-radius: 4px;
+    padding: 4px 10px;
+    cursor: pointer;
+  }
+  #cal-filter-btn:hover { color: #eee; }
+}
+
+@media (min-width: 769px) {
+  #cal-filter-btn { display: none; }
+}
 </style>
 </head>
 <body>
@@ -219,7 +376,11 @@ html, body { width: 100%; height: 100%; background: #0a0a0a; color: #ddd; font-f
   <h1>NYC THEATER · SUMMER 2026</h1>
   <button class="tab-btn active" id="tab-map" onclick="showView('map')">Map</button>
   <button class="tab-btn" id="tab-calendar" onclick="showView('calendar')">Calendar</button>
+  <button id="menu-btn" onclick="toggleDrawer()">☰</button>
 </div>
+
+<!-- Mobile overlay -->
+<div id="overlay" onclick="closeOverlay()"></div>
 
 <!-- ══ MAP VIEW ══ -->
 <div class="view active" id="view-map">
@@ -282,6 +443,7 @@ html, body { width: 100%; height: 100%; background: #0a0a0a; color: #ddd; font-f
   <div id="cal-main">
     <div id="cal-date-header">
       <h3 id="cal-list-label"></h3>
+      <button id="cal-filter-btn" onclick="toggleDrawer()">≡ Filter</button>
     </div>
     <div id="cal-event-list"></div>
   </div>
@@ -687,6 +849,10 @@ async function openCard(v) {
   document.getElementById('card-link').href = 'https://' + v.url;
   document.getElementById('card-img-placeholder').textContent = initials(v.name);
   document.getElementById('card').classList.add('open');
+  if (isMobile()) {
+    document.getElementById('sidebar').classList.remove('drawer-open');
+    document.getElementById('overlay').classList.add('show');
+  }
 
   await loadVenueImage(
     document.getElementById('card-img'),
@@ -872,6 +1038,7 @@ async function openDetail(ev) {
   document.getElementById('cal-detail-link').href = 'https://' + ev.url;
   document.getElementById('cal-detail-img-ph').textContent = initials(ev.title);
   document.getElementById('cal-detail').classList.add('open');
+  if (isMobile()) document.getElementById('overlay').classList.add('show');
 
   await loadVenueImage(
     document.getElementById('cal-detail-img-el'),
@@ -884,7 +1051,39 @@ async function openDetail(ev) {
   );
 }
 
-function closeDetail() { document.getElementById('cal-detail').classList.remove('open'); }
+function closeDetail() {
+  document.getElementById('cal-detail').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+// ── Mobile drawer / overlay ──
+function isMobile() { return window.innerWidth <= 768; }
+
+function toggleDrawer() {
+  if (!isMobile()) return;
+  const view = document.querySelector('.view.active').id;
+  const sidebar = view === 'view-map' ? document.getElementById('sidebar') : document.getElementById('cal-sidebar');
+  const overlay = document.getElementById('overlay');
+  const isOpen = sidebar.classList.contains('drawer-open');
+  if (isOpen) {
+    sidebar.classList.remove('drawer-open');
+    overlay.classList.remove('show');
+  } else {
+    sidebar.classList.add('drawer-open');
+    overlay.classList.add('show');
+  }
+}
+
+function closeOverlay() {
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('sidebar').classList.remove('drawer-open');
+  document.getElementById('cal-sidebar').classList.remove('drawer-open');
+  document.getElementById('card').classList.remove('open');
+  document.getElementById('cal-detail').classList.remove('open');
+}
+
+// Close bottom sheets when tapping overlay
+document.getElementById('overlay').addEventListener('click', closeOverlay);
 
 // init calendar
 renderCalendar();
