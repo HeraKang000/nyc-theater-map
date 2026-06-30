@@ -8,7 +8,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { width: 100%; height: 100%; background: #0a0a0a; color: #ddd; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+html, body { width: 100%; height: 100%; background: #0a0a0a; color: #ddd; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; overflow: hidden; }
 
 /* ── TOP NAV ── */
 #topbar {
@@ -795,7 +795,7 @@ async function loadVenueImage(imgEl, phEl, capEl, wrapEl, wiki, lat, lng, cat) {
 // ══════════════════════════════════════════════════
 //  MAP VIEW
 // ══════════════════════════════════════════════════
-const map = L.map('map', { center: [40.730, -73.984], zoom: 13 });
+const map = L.map('map', { center: [40.730, -73.984], zoom: 13, zoomControl: false });
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
   attribution: '© OpenStreetMap, © CARTO', maxZoom: 19
 }).addTo(map);
@@ -848,6 +848,9 @@ async function openCard(v) {
   if (isMobile()) {
     document.getElementById('sidebar').classList.remove('drawer-open');
     document.getElementById('overlay').classList.remove('show');
+    map.dragging.disable();
+    map.touchZoom.disable();
+    map.scrollWheelZoom.disable();
   }
 
   await loadVenueImage(
@@ -862,6 +865,11 @@ async function openCard(v) {
 function closeCard() {
   document.getElementById('card').classList.remove('open');
   document.getElementById('overlay').classList.remove('show');
+  if (isMobile()) {
+    map.dragging.enable();
+    map.touchZoom.enable();
+    map.scrollWheelZoom.enable();
+  }
 }
 
 // ══════════════════════════════════════════════════
