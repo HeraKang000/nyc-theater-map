@@ -863,7 +863,10 @@ async function openCard(v) {
   );
 }
 
-function closeCard() { document.getElementById('card').classList.remove('open'); }
+function closeCard() {
+  document.getElementById('card').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
 
 // ══════════════════════════════════════════════════
 //  CALENDAR VIEW
